@@ -3,8 +3,11 @@
 ## Current Protections
 
 - Passwords are stored with PBKDF2 hashes, not plaintext.
+- Registration uses phone SMS verification, username, password, and configurable registration modes.
+- Daily login uses username and password only; phone login is not enabled.
+- Password reset uses SMS verification and increments `token_version`, invalidating old tokens.
 - JWT is required for internal API routes.
-- Deleted users cannot continue using old tokens.
+- Deleted or disabled users cannot continue using old tokens.
 - Main business queries are scoped to the authenticated user.
 - Platform account membership is checked on the backend.
 - A stranger cannot join an existing manual platform account by reusing the same account handle.
@@ -16,8 +19,8 @@
 ## Current Limits
 
 - SQLite is suitable for early single-server Beta, not high-concurrency production.
-- Rate limiting is not distributed. Add Redis or edge-level rate limiting before open public registration.
-- Email verification and password reset are not implemented yet.
+- Rate limiting is currently single-process memory based. Add Redis or edge-level rate limiting before open public registration or multi-instance deployment.
+- Real SMS provider integration is not configured in this repository; development uses a Mock provider only outside production.
 - Official platform OAuth is only reserved; no unofficial login, cookies, scraping, or reverse-engineered APIs are used.
 - Media processing features are paused in the product scope and should be separately reviewed before public exposure.
 

@@ -9,6 +9,7 @@ Users should only upload or enter content they have the right to process. LivePi
 ## User Responsibilities
 
 - Do not upload passwords, platform cookies, private tokens, or highly sensitive personal information.
+- Use your own phone number for registration and password recovery. Do not register accounts for others without permission.
 - Do not use LivePilot to bypass platform rules or automate unauthorized platform actions.
 - Review AI-generated suggestions before using them in a live-stream.
 - Follow applicable platform rules, laws, and local regulations.
@@ -20,6 +21,8 @@ AI output may be incomplete or inaccurate. Reports and suggestions should be tre
 ## Service Status
 
 LivePilot is currently in Beta. Features may change, fail, or be temporarily unavailable. Some capabilities require user-provided model configuration or platform-side permissions.
+
+LivePilot is an independent product and is not affiliated with Douyin or ByteDance.
 
 ## Contact
 

@@ -31,10 +31,11 @@ CORS_ORIGINS=https://www.haoxagent.com
 NEXT_PUBLIC_API_BASE_URL=https://api.haoxagent.com
 ```
 
-6. Build and start:
+6. Build, migrate, and start:
 
 ```bash
 docker compose build
+docker compose run --rm api alembic upgrade head
 docker compose up -d
 docker compose ps
 ```
@@ -55,6 +56,7 @@ Keep the previous image or previous Git commit available. To roll back:
 ```bash
 git checkout <previous-commit>
 docker compose build
+docker compose run --rm api alembic upgrade head
 docker compose up -d
 ```
 

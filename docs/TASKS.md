@@ -2,6 +2,16 @@
 
 ## 当前生产可用化与多用户安全
 
+- [x] 账号体系改造为：手机号验证码注册、用户名密码登录、手机号验证码找回密码。
+- [x] 增加注册模式：`closed`、`invite`、`open`，后端强制执行。
+- [x] 增加短信验证码基础设施：6 位数字、哈希存储、过期、一次性使用、purpose 隔离、错误次数限制。
+- [x] 增加 MockSmsProvider 和短信 Provider 抽象；生产环境禁止 Mock 短信。
+- [x] 增加找回密码流程，修改密码后 `token_version` 增加，旧 Token 失效。
+- [x] 增加用户名规则、手机号 E.164 规范化和脱敏。
+- [x] 增加 Alembic 基础迁移，支持空库初始化和旧 `users` 表升级。
+- [x] 增加单进程限流基础：短信、注册、登录、找回密码。
+- [x] 增加运维脚本：preflight、生产配置校验、健康检查、SQLite 备份和恢复。
+- [x] 增加 `docs/DESIGN_SYSTEM.md`、`docs/RATE_LIMITING.md`、`docs/RESOURCE_LIMITS.md`。
 - [x] 强化认证与用户边界：删除用户不能登录或继续使用旧 Token。
 - [x] 增加服务就绪检查：`/api/ready` 和根路径 `/ready` 检查数据库与上传目录。
 - [x] 平台账号去重修复：手动账号重复时不再把陌生用户自动加入成员。
@@ -14,8 +24,9 @@
 - [x] 增加首次生产部署、华为服务器、Cloudflare Tunnel、域名绑定、迁移路线图和发布清单文档。
 - [x] 依赖安全审计：已升级可安全处理的 ESLint/PostCSS 低风险依赖。
 - [ ] 本机 Docker Compose 命令不可用，待在装有 Docker Compose 的机器或华为服务器上验证 `docker compose config/build/up`。
-- [ ] 正式数据库迁移机制仍待实现，当前仅记录 `docs/DATABASE_MIGRATIONS.md` 方案。
-- [ ] 邮箱验证、密码找回和分布式限流仍待后续实现。
+- [ ] 真实短信供应商未接入，需负责人提供供应商、签名、模板和密钥。
+- [ ] 更换手机号流程仍待实现，当前不放无效按钮。
+- [ ] 分布式限流仍待后续接入 Redis 或 Cloudflare 边缘规则。
 - [ ] 最终 LICENSE 仍待产品负责人确认，本轮不创建正式许可证文件。
 
 ## 本轮开源与演示准备

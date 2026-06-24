@@ -4,6 +4,8 @@ Open-source AI copilot for live-stream operations and safety.
 
 LivePilot is an AI copilot that helps streamers prepare better, review performance, manage platform accounts, reduce content risks, and continuously improve live-stream operations.
 
+LivePilot is an independent product and is not affiliated with Douyin or ByteDance.
+
 ## What It Does
 
 LivePilot helps streamers and live-stream operators turn platform backend screenshots and manual metrics into practical next-step plans:
@@ -20,6 +22,8 @@ The current Beta focuses on real self-service workflows backed by the FastAPI AP
 ## Current Core Features
 
 - Invite-code registration and login.
+- Phone-verified registration, username/password login, and SMS-based password recovery.
+- Configurable registration modes: closed, invite-only, or open.
 - First-use guidance for new streamers.
 - Anchor profile management.
 - Douyin platform account records and anchor binding.
@@ -31,6 +35,19 @@ The current Beta focuses on real self-service workflows backed by the FastAPI AP
 - Growth task execution tracking.
 - Feedback collection.
 - Model settings for text analysis and image recognition.
+
+## Account System
+
+LivePilot uses one clear account model:
+
+- Register with phone SMS verification, username, password, and terms/privacy confirmation.
+- In invite mode, registration also requires an invite code.
+- Log in with username and password.
+- Reset password through SMS verification sent to the bound phone.
+- Phone numbers are for verification and account recovery, not daily login.
+- Email is optional profile data and is not currently used for login or password recovery.
+
+The repository includes a development Mock SMS provider and the provider abstraction. A real SMS provider such as Aliyun, Tencent Cloud, or Volcengine must be configured before public registration.
 
 ## Product Screenshots
 
@@ -50,6 +67,9 @@ See:
 - `docs/CURRENT_ARCHITECTURE.md`
 - `docs/CLOUDFLARE_MIGRATION_PLAN.md`
 - `docs/OPEN_SOURCE_CHECKLIST.md`
+- `docs/DESIGN_SYSTEM.md`
+- `docs/RATE_LIMITING.md`
+- `docs/RESOURCE_LIMITS.md`
 
 ## Local Setup
 

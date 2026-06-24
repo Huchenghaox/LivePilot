@@ -21,6 +21,7 @@ Edit `.env` on the server. Do not copy it back into Git.
 
 ```bash
 docker compose build
+docker compose run --rm api alembic upgrade head
 docker compose up -d
 docker compose ps
 ```

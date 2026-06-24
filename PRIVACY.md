@@ -7,6 +7,7 @@ This document explains the intended privacy baseline for LivePilot Beta and open
 LivePilot may process:
 
 - account registration information;
+- username, nickname, phone number, and phone verification status;
 - anchor profiles;
 - manually recorded platform account information;
 - live-stream planning inputs;
@@ -22,6 +23,10 @@ Users should not upload passwords, cookies, private platform tokens, government 
 ## AI Processing
 
 When users configure AI models, selected live-stream context may be sent to the configured model provider to generate plans, safety checks, and reports. Users should review the privacy terms of their chosen provider.
+
+## Phone Verification
+
+Phone numbers are used for registration verification, password recovery, and future account security flows such as changing the bound phone number. Phone numbers are not used as the daily login identifier. SMS verification codes are stored as hashes, expire quickly, and should never be shared with anyone.
 
 ## Storage
 

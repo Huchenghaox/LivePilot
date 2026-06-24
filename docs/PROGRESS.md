@@ -1,5 +1,64 @@
 # 开发进度
 
+## 2026-06-25：手机号验证账号体系与迁移基础
+
+- 已确立 LivePilot 当前唯一账号体系：
+  - 手机号短信验证码注册；
+  - 用户名和密码日常登录；
+  - 手机号短信验证码找回密码；
+  - 不提供手机号密码登录、手机号验证码登录、邮箱登录或第三方登录。
+- 已完成后端账号字段扩展：
+  - `username`、`username_normalized`；
+  - `phone_normalized`、`phone_verified_at`；
+  - `nickname`、`status`、`token_version`、`last_login_at`；
+  - 邮箱字段保留为可选资料，不参与登录和找回密码。
+- 已完成短信验证码基础设施：
+  - 6 位验证码；
+  - 哈希存储；
+  - 5 分钟默认有效；
+  - 验证成功即失效；
+  - 新验证码替换旧验证码；
+  - register/reset_password/change_phone_old/change_phone_new purpose 隔离；
+  - 错误次数限制；
+  - 生产环境未配置真实短信时不会伪装发送成功。
+- 已完成注册模式：
+  - `REGISTRATION_MODE=closed`；
+  - `REGISTRATION_MODE=invite`；
+  - `REGISTRATION_MODE=open`；
+  - 生产开放注册要求真实短信配置。
+- 已完成找回密码：
+  - 输入用户名或手机号；
+  - 向绑定手机号发送验证码；
+  - 验证后设置新密码；
+  - 旧 Token 通过 `token_version` 失效。
+- 已改造登录页：
+  - 登录只显示用户名和密码；
+  - 注册显示手机号、验证码、用户名、昵称、密码、确认密码、邀请码和条款隐私确认；
+  - 找回密码采用确认账号、手机验证、完成三步；
+  - 开发环境 Mock 短信验证码只在开发提示区显示。
+- 已更新“我的”页面：
+  - 显示用户名、昵称、脱敏手机号和手机号验证状态；
+  - 修改密码要求确认新密码；
+  - 修改成功后清除本地登录并跳转重新登录。
+- 已增加 Alembic：
+  - 空库初始化验证通过；
+  - 重复 upgrade 验证通过；
+  - 旧 `users` 表升级验证通过。
+- 已增加文档：
+  - `docs/DESIGN_SYSTEM.md`；
+  - `docs/RATE_LIMITING.md`；
+  - `docs/RESOURCE_LIMITS.md`。
+- 已增加运维脚本：
+  - `scripts/preflight.sh`；
+  - `scripts/validate-production-config.sh`；
+  - `scripts/check-health.sh`；
+  - `scripts/backup-sqlite.sh`；
+  - `scripts/restore-sqlite.sh`。
+- 已完成验证：
+  - 后端 `python -m pytest` 通过，58 个测试；
+  - 前端 `npm run typecheck`、`npm run lint`、`npm run build` 通过；
+  - Alembic 空库、旧库和重复 upgrade 验证通过。
+
 ## 2026-06-25：生产可用化、安全边界和部署准备
 
 - 已继续在唯一正式目录 `/Users/huchenghao/Projects/LivePilot` 工作，旧目录仅作为只读历史参考。

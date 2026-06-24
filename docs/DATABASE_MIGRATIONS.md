@@ -1,33 +1,65 @@
 # Database Migrations
 
-Current status:
+LivePilot now includes Alembic for versioned database migrations.
 
-- Local development uses SQLAlchemy table creation plus a development-only compatibility helper.
-- `ensure_dev_schema()` now runs only outside production.
-- Production should not rely on automatic ad hoc `ALTER TABLE` calls at application startup.
+## Current State
+
+- Alembic config: `api/alembic.ini`.
+- Alembic environment: `api/alembic/env.py`.
+- First migration: `20260625_0001_account_system.py`.
+- `ensure_dev_schema()` still runs only outside production as a temporary local Beta compatibility helper.
+
+## What the First Migration Covers
+
+- Empty SQLite database initialization from current SQLAlchemy metadata.
+- Upgrade of an older SQLite database that already has a legacy `users` table.
+- Account-system additions:
+  - username;
+  - normalized username;
+  - normalized phone;
+  - phone verification time;
+  - nickname;
+  - status;
+  - token version;
+  - SMS verification table;
+  - invite code table.
+
+## Commands
+
+```bash
+cd api
+source .venv/bin/activate
+alembic upgrade head
+```
+
+Verified locally:
+
+- empty SQLite database upgrade;
+- repeated `alembic upgrade head`;
+- legacy SQLite database with old `users` table upgrade.
 
 ## Production Rule
 
-Before broader production use, introduce a versioned migration tool. Recommended path:
+Production should run Alembic before starting the new application version. Do not rely on ad hoc startup schema mutation in production.
 
-1. Add Alembic.
-2. Generate an initial migration from current SQLAlchemy models.
-3. Add migration commands to deployment scripts.
-4. Back up the database before running migrations.
-5. Run migrations before starting the new application version.
+## Backup Before Upgrade
 
-## Current Early Beta
+For a plain SQLite path:
 
-For the first controlled deployment, a fresh SQLite database can be initialized by application startup. Existing production databases should not be upgraded blindly. If an existing database is used, make a backup and test migration on a copy first.
+```bash
+cp api/data/live_assistant.db "api/data/live_assistant.$(date +%Y%m%d-%H%M%S).db"
+```
 
-## Backup
-
-For Docker Compose local volume:
+For Docker Compose volume:
 
 ```bash
 docker run --rm -v livepilot_livepilot_api_data:/data -v "$PWD":/backup busybox tar czf /backup/livepilot-api-data.tgz /data
 ```
 
-## Open Task
+Never run production migrations without a current backup.
 
-Add Alembic before public self-service registration is opened widely.
+## Remaining Work
+
+- Split future schema changes into small, purpose-specific migrations.
+- Add Alembic upgrade checks to CI once the production database path is finalized.
+- Remove development schema mutation after all Beta databases have migrated.
