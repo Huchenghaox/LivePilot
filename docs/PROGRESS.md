@@ -1,5 +1,48 @@
 # 开发进度
 
+## 2026-06-24：剩余页面视觉、开源文档和产品流程烟测
+
+- 已继续统一剩余页面的深色视觉基线：
+  - 全局 `details/summary`、旧描边按钮、危险按钮、复选框和打印样式；
+  - 全局错误页；
+  - 404 页面；
+  - 实时助手预览页，明确标记为后续开放能力，避免误导当前截图复盘 Beta 用户。
+- 已完成未登录状态浏览器烟测，覆盖：
+  - 首页、登录、主播管理、平台账号、开播准备、直播复盘、数据确认、报告详情、规则中心、模型设置、我的、实时助手预览和 404；
+  - 桌面与手机尺寸均未发现横向溢出；
+  - 未发现大块白底残留。
+- 已完成登录态核心数据闭环烟测：
+  - 注册临时用户；
+  - 创建主播；
+  - 创建平台账号；
+  - 创建开播方案；
+  - 创建直播复盘；
+  - 写入手动指标；
+  - 生成报告；
+  - 提交反馈；
+  - 历史记录读取成功。
+- 已新增开源项目基础文档：
+  - `README.md`；
+  - `CONTRIBUTING.md`；
+  - `SECURITY.md`；
+  - `docs/LOCAL_DEVELOPMENT.md`；
+  - `docs/DEPLOYMENT_OVERVIEW.md`；
+  - `docs/DEMO_GUIDE.md`。
+- 已新增许可证建议文档 `docs/LICENSE_RECOMMENDATION.md`：
+  - 对比 AGPL-3.0、Apache-2.0、MIT；
+  - 当前建议优先考虑 AGPL-3.0；
+  - 暂未创建正式 LICENSE，等待产品负责人确认。
+- 已新增依赖安全审计文档 `docs/DEPENDENCY_SECURITY.md`：
+  - 当前 `npm audit` 显示 2 个 low、2 个 moderate；
+  - 风险主要来自 ESLint 开发链路和 Next/PostCSS；
+  - 未执行 `npm audit fix --force`，避免破坏 Next.js 主版本和 lockfile。
+- 已确认本轮不处理：
+  - GitHub 登录和网络问题；
+  - `git push`；
+  - Cloudflare 实际部署；
+  - DNS、华为服务器、D1/R2 生产资源；
+  - 最终 LICENSE 文件。
+
 ## 2026-06-24：开播准备页视觉优化
 
 - 已将开播准备页输入区改为深色“AI 开播编导”卡片，突出生成开播方案这个主操作。
