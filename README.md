@@ -2,7 +2,7 @@
 
 Open-source AI copilot for live-stream operations and safety.
 
-LivePilot is an open-source AI copilot for live-stream operations, content planning, safety checks, and post-stream review.
+LivePilot is an AI copilot that helps streamers prepare better, review performance, manage platform accounts, reduce content risks, and continuously improve live-stream operations.
 
 ## What It Does
 
@@ -15,11 +15,12 @@ LivePilot helps streamers and live-stream operators turn platform backend screen
 - what the streamer can say directly;
 - which rules or reminders should be considered.
 
-The current Beta focuses on screenshot-based post-stream review. Audio/video processing, real-time listening, automatic platform control, and highlight clipping are not part of the current usable scope.
+The current Beta focuses on real self-service workflows backed by the FastAPI API: registration, anchor profiles, platform account records, pre-stream planning, manual/screenshot-assisted review, reports, and improvement tasks. Audio/video processing, real-time listening, automatic platform control, and highlight clipping are not part of the current usable product scope.
 
 ## Current Core Features
 
 - Invite-code registration and login.
+- First-use guidance for new streamers.
 - Anchor profile management.
 - Douyin platform account records and anchor binding.
 - Pre-stream planning: topic, title, opening script, interaction nodes, follow prompts, and safety notes.
@@ -39,9 +40,10 @@ Screenshots are not included yet. Add product screenshots only when the images a
 
 - Frontend: Next.js, React, TypeScript, Tailwind CSS.
 - Backend: FastAPI, SQLAlchemy, SQLite for local Beta development.
-- AI adapters: OpenAI-compatible text and vision adapters, plus explicit Mock paths for tests and demos.
+- AI adapters: OpenAI-compatible text and vision adapters, plus explicit Mock paths for tests and development-only verification.
 - Storage: local development storage with an adapter boundary for future object storage.
-- Future deployment direction: Cloudflare Pages first, then staged evaluation of Workers, D1, R2, and Queues.
+- Current production path: Next.js frontend plus FastAPI backend.
+- Future deployment direction: Cloudflare in front of the product first, then staged evaluation of Pages, Workers, D1, R2, and Queues.
 
 See:
 
@@ -125,6 +127,25 @@ npm run lint
 npm run build
 ```
 
+## Docker
+
+Local container build:
+
+```bash
+docker compose config
+docker compose build
+docker compose up -d
+```
+
+Health checks:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+curl http://127.0.0.1:8000/api/ready
+```
+
+For production, set `APP_ENV=production` and replace `JWT_SECRET`, `INVITE_CODE`, `CORS_ORIGINS`, and model settings in a server-side `.env` file. Do not commit real `.env` files.
+
 ## Project Structure
 
 ```text
@@ -133,14 +154,15 @@ web/      Next.js frontend
 docs/     Product, architecture, migration, and open-source docs
 ```
 
-## Cloudflare Migration Status
+## Production Deployment Status
 
-Cloudflare migration is planned but not production-ready.
+Cloudflare-native backend migration is planned but not production-ready.
 
-Transition plan:
+Shortest real launch path:
 
-- Cloudflare can host the frontend first.
-- FastAPI can continue running independently during migration.
+- Run frontend and FastAPI on the Huawei Ubuntu server with Docker Compose.
+- Expose `www.haoxagent.com` and `api.haoxagent.com` through Cloudflare Tunnel.
+- Keep SQLite and local uploads as an early controlled Beta only.
 
 Long-term goal:
 
@@ -150,12 +172,17 @@ Long-term goal:
 - Move uploaded files to R2.
 - Use Queues for async model and processing jobs where appropriate.
 
-See `docs/CLOUDFLARE_MIGRATION_PLAN.md`.
+See:
+
+- `docs/FIRST_PRODUCTION_DEPLOYMENT.md`
+- `docs/HUAWEI_SERVER_DEPLOYMENT.md`
+- `docs/CLOUDFLARE_TUNNEL_DEPLOYMENT.md`
+- `docs/PRODUCTION_CONFIGURATION.md`
+- `docs/PRODUCTION_MIGRATION_ROADMAP.md`
 
 ## Roadmap
 
 - Finish screenshot review Beta polish.
-- Add public-safe demo data and screenshots.
 - Improve model configuration and report quality iteration.
 - Add R2-compatible storage adapter.
 - Add explicit database migrations.
@@ -169,7 +196,11 @@ See `CONTRIBUTING.md`.
 
 Please do not open public issues containing secrets, user data, platform tokens, or private screenshots. See `SECURITY.md`.
 
+Terms and privacy foundations:
+
+- `TERMS.md`
+- `PRIVACY.md`
+
 ## License
 
 License selection is in progress. See `docs/LICENSE_RECOMMENDATION.md`.
-

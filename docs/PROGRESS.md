@@ -1,5 +1,60 @@
 # 开发进度
 
+## 2026-06-25：生产可用化、安全边界和部署准备
+
+- 已继续在唯一正式目录 `/Users/huchenghao/Projects/LivePilot` 工作，旧目录仅作为只读历史参考。
+- 已完成多用户安全加固：
+  - 删除用户无法继续登录或使用旧 Token；
+  - 平台账号按主播筛选时验证主播归属；
+  - 手动记录平台账号遇到重复账号时不再自动把陌生用户加入成员；
+  - 增加对应回归测试。
+- 已完成自主注册和首次使用引导优化：
+  - 注册页增加确认密码、密码显示/隐藏、服务条款与隐私确认、防重复提交；
+  - 首页根据当前用户真实数据展示主播、账号、模型、开播方案和复盘进度；
+  - 新增 `TERMS.md`、`PRIVACY.md` 及前端查看页面。
+- 已完成生产配置基础加固：
+  - 增加 `APP_ENV`；
+  - 生产环境拒绝默认 JWT Secret；
+  - 生产环境要求显式 CORS；
+  - 增加 `/health`、`/ready` 根路径和 `/api/ready` 就绪检查。
+- 已完成生产部署准备文档：
+  - `docs/PRODUCTION_CONFIGURATION.md`；
+  - `docs/SECURITY_REVIEW.md`；
+  - `docs/FIRST_PRODUCTION_DEPLOYMENT.md`；
+  - `docs/HUAWEI_SERVER_DEPLOYMENT.md`；
+  - `docs/CLOUDFLARE_TUNNEL_DEPLOYMENT.md`；
+  - `docs/PRODUCTION_MIGRATION_ROADMAP.md`；
+  - `docs/GITHUB_FIRST_PUSH.md`；
+  - `docs/DOMAIN_BINDING.md`；
+  - `docs/RELEASE_CHECKLIST.md`；
+  - `docs/DATABASE_MIGRATIONS.md`。
+- 已新增 Docker 和开源协作准备：
+  - 后端 Dockerfile；
+  - 前端 Dockerfile；
+  - 根目录 `docker-compose.yml`；
+  - `.dockerignore`；
+  - GitHub Actions CI；
+  - Issue 模板、PR 模板和 Dependabot 配置。
+- 已处理依赖审计中可安全升级的部分：
+  - 升级 ESLint 与 PostCSS 小版本后，原 2 个 low 风险已消除；
+  - 剩余 2 个 moderate 来自 Next.js 内部依赖链，当前不使用 `npm audit fix --force`。
+- 已完成验证：
+  - 后端 `python -m pytest` 通过，55 个测试；
+  - 后端 `ruff check .` 通过；
+  - 前端 `npm run typecheck` 通过；
+  - 前端 `npm run lint` 通过；
+  - 前端 `npm run build` 通过。
+- 本机 Docker Compose 验证受阻：
+  - `docker compose config` 返回当前 Docker CLI 无 compose 子命令；
+  - `docker-compose config` 未安装；
+  - 未安装或修改本机 Docker 环境，需明天在具备 Compose 的服务器或本机环境复验。
+- 本轮仍未执行：
+  - `git push`；
+  - GitHub 设置修改；
+  - Cloudflare 资源创建；
+  - DNS 修改；
+  - 华为服务器命令。
+
 ## 2026-06-24：剩余页面视觉、开源文档和产品流程烟测
 
 - 已继续统一剩余页面的深色视觉基线：
