@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #e8edf7;
+  background: #0b0b10;
+  color-scheme: dark;
+  --bg: #0b0b10;
+  --bg-soft: #101016;
+  --panel: #17171f;
+  --panel-2: #1c1c25;
+  --panel-3: #222331;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #e8edf7;
+  --text-strong: #f6f8fc;
+  --muted: #9ca6b8;
+  --muted-2: #6f7a8f;
+  --brand: #25f4ee;
+  --brand-2: #20d8d2;
+  --coral: #fe2c55;
+  --warning: #f59e0b;
+  --success: #22c55e;
+  --danger: #fb7185;
+  --radius-card: 18px;
+  --radius-control: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(37, 244, 238, 0.12), transparent 30rem),
+    radial-gradient(circle at top right, rgba(254, 44, 85, 0.12), transparent 28rem),
+    linear-gradient(135deg, #0b0b10 0%, #101016 52%, #121218 100%);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease, opacity 160ms ease;
+}
+
+button:disabled,
+a[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+input,
+select,
+textarea {
+  color: var(--text);
+  background: rgba(23, 23, 31, 0.88);
+  border-color: var(--line-strong);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-2);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(37, 244, 238, 0.72);
+  box-shadow: 0 0 0 3px rgba(37, 244, 238, 0.12);
+  outline: none;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  box-shadow: 0 0 0 1000px #17171f inset;
+  caret-color: var(--text);
+}
+
+select option {
+  color: var(--text);
+  background: #17171f;
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(28, 28, 37, 0.94), rgba(17, 17, 24, 0.92));
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 45%, var(--coral) 100%);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--brand), var(--coral));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.focus-ring:focus-visible {
+  outline-color: var(--brand);
+  outline-offset: 3px;
+}
+
+/* Compatibility layer for existing Tailwind utility-heavy pages. */
+.bg-soft,
+.bg-white {
+  background-color: rgba(23, 23, 31, 0.88) !important;
+}
+
+.bg-slate-50,
+.bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.045) !important;
+}
+
+.bg-emerald-50 {
+  background-color: rgba(37, 244, 238, 0.1) !important;
+}
+
+.bg-red-50 {
+  background-color: rgba(254, 44, 85, 0.11) !important;
+}
+
+.bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+.border-slate-200,
+.border-slate-300,
+.border-emerald-200,
+.border-red-200,
+.border-amber-200 {
+  border-color: var(--line) !important;
+}
+
+.text-ink,
+.text-slate-700,
+.text-slate-800,
+.text-emerald-800 {
+  color: var(--text-strong) !important;
+}
+
+.text-slate-600,
+.text-slate-500 {
+  color: var(--muted) !important;
+}
+
+.text-slate-400 {
+  color: var(--muted-2) !important;
+}
+
+.text-brand,
+.text-emerald-700 {
+  color: var(--brand) !important;
+}
+
+.text-red-700,
+.text-red-600 {
+  color: #ff7a93 !important;
+}
+
+.text-amber-800,
+.text-amber-700 {
+  color: #fbbf24 !important;
+}
+
+.border-brand {
+  border-color: rgba(37, 244, 238, 0.72) !important;
+}
+
+.bg-brand {
+  background: linear-gradient(135deg, var(--brand), var(--brand-2), var(--coral)) !important;
+}
+
+.bg-coral {
+  background: linear-gradient(135deg, var(--coral), #f04470) !important;
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    color: #111827 !important;
+    background: #ffffff !important;
+  }
+
+  aside,
+  nav,
+  button,
+  .app-shell-nav,
+  .no-print {
+    display: none !important;
+  }
+
+  main,
+  section,
+  div,
+  details {
+    color: #111827 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .text-slate-500,
+  .text-slate-600,
+  .text-slate-700,
+  .text-red-700,
+  .text-emerald-800,
+  .text-amber-800 {
+    color: #111827 !important;
+  }
+
+  .border,
+  .border-slate-200,
+  .border-slate-300 {
+    border-color: #d1d5db !important;
+  }
+}
