@@ -10,10 +10,10 @@
 | 首页工作台 | `/` | `/api/dashboard`, `/api/streamers`, `/api/platform-accounts` | live_sessions, growth_tasks | 是 | 是 | 是 | 是 | 有 | 已验证账号上下文和响应式基线 | 完成 | 已补深色主操作区、最近复盘卡、任务卡和实时助手入口收敛；保持回归测试 |
 | 主播档案 | `/streamers` | `/api/streamers` | streamers, users.default_streamer_id | 是 | 是 | 是 | 是 | 有 | 部分验证 | 完成 | 已补恢复归档主播、默认主播持久化和主流程默认选择；待最终浏览器巡检 |
 | 平台账号 | `/platform-accounts` | `/api/platform-accounts*` | platform_accounts, user_platform_accounts, anchor_platform_accounts | 是 | 是 | 是 | 是 | 有 | 已验证创建/成员/复盘关联 | 完成 | 已补编辑、绑定/解绑主播、成员改角色/移除和后端归属权限校验；待最终浏览器巡检 |
-| 开播准备 | `/prepare` | `/api/prepare-plans` | preparation_plans | 是 | 是 | 是 | 是 | 有 | 待复验 | 完成 | 已补生成、编辑保存、复制、历史重开、标记使用、账号和复盘关联；待最终浏览器巡检 |
-| 直播复盘创建 | `/review` | `/api/live-sessions`, `/api/live-sessions/{id}/metrics` | live_sessions, recognized_metrics | 是 | 是 | 是 | 是 | 有 | 已验证基础流程 | 完成 | 已补开播方案关联、日期筛选、状态筛选和账号筛选；待最终浏览器巡检 |
-| 截图上传 | `/review` | `/api/live-sessions/{id}/screenshots` | uploaded_assets, screenshot_recognitions, recognized_metric_fields | 是 | 是 | 是 | 是 | 有 | 待复验 | 进行中 | 已补多图预览、前后端类型/大小校验、上传进度、前端删除/排序和后端截图列表/删除/排序；待浏览器复验失败重试 |
-| 手动数据录入 | `/review/{id}/confirm` | `/api/live-sessions/{id}/recognized-fields`, `/api/live-sessions/{id}/metrics` | recognized_metric_fields, recognized_metrics | 是 | 是 | 是 | 是 | 有 | 已验证主路径 | 进行中 | 已补曝光、进入、流量占比、分享、画像、成交、退款、违规原文和自定义指标；待浏览器复验 |
+| 开播准备 | `/prepare` | `/api/prepare-plans` | preparation_plans | 是 | 是 | 是 | 是 | 有 | 待复验 | 完成 | 已补生成、编辑保存、复制、历史重开、标记使用、账号和复盘关联，并完成深色开播编导视觉；待最终浏览器巡检 |
+| 直播复盘创建 | `/review` | `/api/live-sessions`, `/api/live-sessions/{id}/metrics` | live_sessions, recognized_metrics | 是 | 是 | 是 | 是 | 有 | 已验证基础流程 | 完成 | 已补开播方案关联、日期筛选、状态筛选、账号筛选和深色步骤条；待最终浏览器巡检 |
+| 截图上传 | `/review` | `/api/live-sessions/{id}/screenshots` | uploaded_assets, screenshot_recognitions, recognized_metric_fields | 是 | 是 | 是 | 是 | 有 | 待复验 | 进行中 | 已补多图预览、前后端类型/大小校验、上传进度、前端删除/排序、后端截图列表/删除/排序和深色上传状态；待浏览器复验失败重试 |
+| 手动数据录入 | `/review/{id}/confirm` | `/api/live-sessions/{id}/recognized-fields`, `/api/live-sessions/{id}/metrics` | recognized_metric_fields, recognized_metrics | 是 | 是 | 是 | 是 | 有 | 已验证主路径 | 进行中 | 已补曝光、进入、流量占比、分享、画像、成交、退款、违规原文、自定义指标和深色确认页；待浏览器复验 |
 | 报告生成与版本 | `/review/{id}/confirm`, `/report/{id}` | `/api/live-sessions/{id}/report`, `/report-versions` | review_reports, review_report_versions, growth_tasks | 是 | 是 | 是 | 是 | 有 | 已验证基础报告 | 完成 | 已补生成步骤提示、前端防重复生成锁、历史版本内容查看和更换模型入口；待最终浏览器巡检 |
 | 历史复盘与对比 | `/review`, `/report/{id}` | `/api/live-sessions`, report context | live_sessions, recognized_metrics | 是 | 是 | 是 | 是 | 有 | 部分验证 | 进行中 | 已补按主播、抖音账号、日期、状态筛选和账号隔离测试；待补自定义两场对比浏览器复验 |
 | 建议执行闭环 | `/report/{id}`, `/review` | `/api/growth-tasks` | growth_tasks | 是 | 是 | 是 | 是 | 有 | 部分验证 | 完成 | 继续浏览器复验下一场读取 |
@@ -22,7 +22,7 @@
 | 用户反馈 | `/report/{id}`, `/me` | `/api/feedback` | user_feedback | 是 | 是 | 是 | 是 | 有 | 部分验证 | 完成 | 已补反馈关联主播、抖音账号、报告版本、模型名和规则快照；待最终浏览器巡检 |
 | 账户与隐私 | `/me` | `/api/account/*` | users 和用户数据表 | 是 | 是 | 是 | 是 | 有 | 部分验证 | 进行中 | 待补上传图片删除、解除平台账号关联、软删除处理视图 |
 | 系统错误状态 | `/not-found`, `/error`, API错误统一处理 | 多接口 | 不适用 | 是 | 是 | 是 | 是 | 部分 | 部分验证 | 进行中 | 待补无权限/模型未配置/分析失败专用体验 |
-| 响应式与视觉统一 | 全站 | 不适用 | 不适用 | 不适用 | 基础 | 基础 | 基础 | 构建检查 | 已验证桌面/手机基线 | 进行中 | 已完成深色设计 Token、全局背景、导航、按钮、卡片、表单、首页、报告第一屏和打印白底基线；待逐页细化复盘/规则/模型视觉 |
+| 响应式与视觉统一 | 全站 | 不适用 | 不适用 | 不适用 | 基础 | 基础 | 基础 | 构建检查 | 已验证桌面/手机基线 | 进行中 | 已完成深色设计 Token、全局背景、导航、按钮、卡片、表单、首页、开播准备、复盘创建/截图上传、数据确认、报告第一屏和打印白底基线；待逐页细化规则/模型视觉 |
 | 音视频/实时/高光/自动场控 | 隐藏或后续开放 | 已有部分底层但非当前入口 | 部分 | 部分 | 不适用 | 不适用 | 不适用 | 既有测试 | 不验收 | 后续开放 | 本轮不继续扩展 |
 
 ## 截图复盘 Beta 完成清单
