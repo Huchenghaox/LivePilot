@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     upload_dir: str = "./data/uploads"
     invite_code: str = "BETA2026"
+    registration_mode: str = "invite"
     cors_origins: str = "http://127.0.0.1:3000,http://localhost:3000"
     max_screenshot_upload_mb: int = 20
     max_media_upload_mb: int = 500
@@ -31,6 +32,21 @@ class Settings(BaseSettings):
     douyin_client_secret: str = Field(default="", repr=False)
     douyin_redirect_uri: str = ""
     douyin_platform_status: str = "未配置"
+    sms_enabled: bool = False
+    sms_provider: str = "mock"
+    sms_access_key_id: str = Field(default="", repr=False)
+    sms_access_key_secret: str = Field(default="", repr=False)
+    sms_sign_name: str = ""
+    sms_template_code: str = ""
+    sms_region: str = ""
+    sms_code_ttl_seconds: int = 300
+    sms_send_interval_seconds: int = 60
+    sms_hourly_limit_per_phone: int = 5
+    sms_daily_limit_per_phone: int = 10
+    sms_hourly_limit_per_ip: int = 30
+    verification_max_attempts: int = 5
+    login_fail_hourly_limit: int = 10
+    register_hourly_limit_per_ip: int = 20
 
     @property
     def is_production(self) -> bool:
@@ -58,6 +74,12 @@ def get_settings() -> Settings:
         raise RuntimeError("生产环境 JWT_SECRET 长度至少需要 32 个字符。")
     if settings.is_production and not settings.allowed_cors_origins:
         raise RuntimeError("生产环境必须显式配置 CORS_ORIGINS。")
+    if settings.is_production and settings.registration_mode not in {"closed", "invite", "open"}:
+        raise RuntimeError("REGISTRATION_MODE 只能是 closed、invite 或 open。")
+    if settings.is_production and settings.registration_mode == "open" and not settings.sms_enabled:
+        raise RuntimeError("开放注册必须先配置可用短信服务。")
+    if settings.is_production and settings.sms_enabled and settings.sms_provider == "mock":
+        raise RuntimeError("生产环境不能使用 Mock 短信服务。")
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     Path("./data").mkdir(parents=True, exist_ok=True)
     return settings

@@ -51,10 +51,21 @@ def ensure_dev_schema() -> None:
     if "users" in inspector.get_table_names():
         columns = {column["name"] for column in inspector.get_columns("users")}
         additions = {
+            "phone_normalized": "ALTER TABLE users ADD COLUMN phone_normalized VARCHAR(32)",
+            "phone_verified_at": "ALTER TABLE users ADD COLUMN phone_verified_at DATETIME",
+            "username": "ALTER TABLE users ADD COLUMN username VARCHAR(32)",
+            "username_normalized": "ALTER TABLE users ADD COLUMN username_normalized VARCHAR(32)",
+            "nickname": "ALTER TABLE users ADD COLUMN nickname VARCHAR(80) DEFAULT '' NOT NULL",
+            "email": "ALTER TABLE users ADD COLUMN email VARCHAR(160) DEFAULT '' NOT NULL",
+            "email_verified_at": "ALTER TABLE users ADD COLUMN email_verified_at DATETIME",
+            "status": "ALTER TABLE users ADD COLUMN status VARCHAR(30) DEFAULT 'active' NOT NULL",
+            "token_version": "ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1 NOT NULL",
+            "last_login_at": "ALTER TABLE users ADD COLUMN last_login_at DATETIME",
             "is_deleted": "ALTER TABLE users ADD COLUMN is_deleted BOOLEAN DEFAULT 0 NOT NULL",
             "deletion_requested_at": "ALTER TABLE users ADD COLUMN deletion_requested_at DATETIME",
             "deletion_reason": "ALTER TABLE users ADD COLUMN deletion_reason TEXT DEFAULT '' NOT NULL",
             "default_streamer_id": "ALTER TABLE users ADD COLUMN default_streamer_id INTEGER DEFAULT 0 NOT NULL",
+            "updated_at": "ALTER TABLE users ADD COLUMN updated_at DATETIME",
         }
         with engine.begin() as connection:
             for name, ddl in additions.items():

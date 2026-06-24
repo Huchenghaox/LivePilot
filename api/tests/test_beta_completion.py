@@ -8,6 +8,7 @@ from starlette.datastructures import Headers
 
 from app.config import get_settings
 from app.database import Base
+from app.deps import current_user
 from app.models import (
     GrowthTask,
     LiveSession,
@@ -24,7 +25,9 @@ from app.models import (
 from app.routes import (
     add_platform_member,
     archive_streamer,
+    change_password,
     confirm_metrics,
+    confirm_password_reset,
     create_feedback,
     create_live_session,
     create_platform_account,
@@ -51,7 +54,9 @@ from app.routes import (
     request_account_deletion,
     restore_streamer,
     save_model_setting,
+    send_sms_code,
     set_default_streamer,
+    start_password_reset,
     update_growth_task,
     update_model_setting,
     update_platform_account,
@@ -69,6 +74,9 @@ from app.schemas import (
     MetricsConfirm,
     ModelSettingIn,
     ModelSettingUpdate,
+    PasswordChange,
+    PasswordResetConfirm,
+    PasswordResetStart,
     PlatformAccountCreate,
     PlatformAccountUpdate,
     PlatformMemberCreate,
@@ -77,6 +85,7 @@ from app.schemas import (
     PreparePlanUpdate,
     ReportRequest,
     ScreenshotOrderUpdate,
+    SmsCodeRequest,
 )
 
 
@@ -96,37 +105,175 @@ def image_upload(filename: str, content_type: str = "image/png") -> UploadFile:
 
 def test_register_login_and_deleted_user_boundaries():
     db = make_db()
+    code_result = send_sms_code(SmsCodeRequest(phone="13800000000", purpose="register"), db)
 
     registered = register(
-        AuthRegister(phone="13800000000", name="真实主播", password="secret123", invite_code=get_settings().invite_code),
+        AuthRegister(
+            phone="13800000000",
+            sms_code=code_result["debug_code"],
+            username="anchor001",
+            nickname="真实主播",
+            password="secret123",
+            confirm_password="secret123",
+            invite_code=get_settings().invite_code,
+            accepted_terms=True,
+        ),
         db,
     )
     assert registered["access_token"]
     assert registered["user"]["name"] == "真实主播"
+    assert registered["user"]["username"] == "anchor001"
 
     try:
-        register(AuthRegister(phone="13800000000", name="重复账号", password="secret123", invite_code=get_settings().invite_code), db)
+        register(
+            AuthRegister(
+                phone="13800000000",
+                sms_code=code_result["debug_code"],
+                username="anchor002",
+                nickname="重复账号",
+                password="secret123",
+                confirm_password="secret123",
+                invite_code=get_settings().invite_code,
+                accepted_terms=True,
+            ),
+            db,
+        )
     except Exception as exc:
         assert getattr(exc, "status_code", None) == 400
     else:
         raise AssertionError("重复手机号不应注册成功")
 
     try:
-        login(AuthLogin(phone="13800000000", password="wrong-password"), db)
+        login(AuthLogin(username="anchor001", password="wrong-password"), db)
     except Exception as exc:
         assert getattr(exc, "status_code", None) == 400
     else:
         raise AssertionError("错误密码不应登录成功")
 
-    user = db.scalar(select(User).where(User.phone == "13800000000"))
+    logged_in = login(AuthLogin(username="ANCHOR001", password="secret123"), db)
+    assert logged_in["access_token"]
+
+    reset_start = start_password_reset(PasswordResetStart(account="anchor001"), db)
+    assert reset_start["ok"] is True
+    reset_code = reset_start["debug_code"]
+    reset_done = confirm_password_reset(
+        PasswordResetConfirm(
+            account="anchor001",
+            sms_code=reset_code,
+            new_password="newsecret123",
+            confirm_password="newsecret123",
+        ),
+        db,
+    )
+    assert reset_done["ok"] is True
+    assert login(AuthLogin(username="anchor001", password="newsecret123"), db)["access_token"]
+
+    user = db.scalar(select(User).where(User.username_normalized == "anchor001"))
     user.is_deleted = True
     db.commit()
     try:
-        login(AuthLogin(phone="13800000000", password="secret123"), db)
+        login(AuthLogin(username="anchor001", password="newsecret123"), db)
     except Exception as exc:
         assert getattr(exc, "status_code", None) == 403
     else:
         raise AssertionError("已停用账号不应登录成功")
+
+
+def test_sms_code_purpose_isolated_and_password_change_invalidates_token():
+    db = make_db()
+    register_code = send_sms_code(SmsCodeRequest(phone="13800000001", purpose="register"), db)["debug_code"]
+
+    try:
+        register(
+            AuthRegister(
+                phone="13800000001",
+                sms_code=register_code,
+                username="anchor003",
+                nickname="验证码测试",
+                password="secret123",
+                confirm_password="secret123",
+                invite_code=get_settings().invite_code,
+                accepted_terms=True,
+            ),
+            db,
+        )
+    except Exception:
+        raise
+
+    reset_code = send_sms_code(SmsCodeRequest(phone="13800000001", purpose="reset_password"), db)["debug_code"]
+    try:
+        register(
+            AuthRegister(
+                phone="13800000002",
+                sms_code=reset_code,
+                username="anchor004",
+                nickname="错误用途",
+                password="secret123",
+                confirm_password="secret123",
+                invite_code=get_settings().invite_code,
+                accepted_terms=True,
+            ),
+            db,
+        )
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 400
+    else:
+        raise AssertionError("重置密码验证码不能用于注册")
+
+    token = login(AuthLogin(username="anchor003", password="secret123"), db)["access_token"]
+    user = db.scalar(select(User).where(User.username_normalized == "anchor003"))
+    result = change_password(PasswordChange(old_password="secret123", new_password="newsecret123"), user, db)
+    assert result["ok"] is True
+    try:
+        current_user(authorization=f"Bearer {token}", db=db)
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 401
+    else:
+        raise AssertionError("修改密码后旧 Token 应失效")
+
+
+def test_registration_modes_closed_and_open():
+    db = make_db()
+    settings = get_settings()
+    original_mode = settings.registration_mode
+    try:
+        settings.registration_mode = "closed"
+        closed_code = send_sms_code(SmsCodeRequest(phone="13800000003", purpose="register"), db)["debug_code"]
+        try:
+            register(
+                AuthRegister(
+                    phone="13800000003",
+                    sms_code=closed_code,
+                    username="anchor005",
+                    nickname="关闭注册",
+                    password="secret123",
+                    confirm_password="secret123",
+                    accepted_terms=True,
+                ),
+                db,
+            )
+        except Exception as exc:
+            assert getattr(exc, "status_code", None) == 403
+        else:
+            raise AssertionError("关闭注册模式下不应注册成功")
+
+        settings.registration_mode = "open"
+        open_code = send_sms_code(SmsCodeRequest(phone="13800000004", purpose="register"), db)["debug_code"]
+        registered = register(
+            AuthRegister(
+                phone="13800000004",
+                sms_code=open_code,
+                username="anchor006",
+                nickname="开放注册",
+                password="secret123",
+                confirm_password="secret123",
+                accepted_terms=True,
+            ),
+            db,
+        )
+        assert registered["user"]["username"] == "anchor006"
+    finally:
+        settings.registration_mode = original_mode
 
 
 def test_ready_reports_database_and_upload_directory():

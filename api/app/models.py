@@ -11,13 +11,56 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     phone: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    phone_normalized: Mapped[str] = mapped_column(String(32), unique=True, nullable=True, index=True)
+    phone_verified_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    username: Mapped[str] = mapped_column(String(32), unique=True, nullable=True, index=True)
+    username_normalized: Mapped[str] = mapped_column(String(32), unique=True, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(80))
+    nickname: Mapped[str] = mapped_column(String(80), default="")
+    email: Mapped[str] = mapped_column(String(160), default="")
+    email_verified_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(30), default="active")
+    token_version: Mapped[int] = mapped_column(Integer, default=1)
+    last_login_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     deletion_requested_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     deletion_reason: Mapped[str] = mapped_column(Text, default="")
     default_streamer_id: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class SmsVerificationCode(Base):
+    __tablename__ = "sms_verification_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    phone_normalized: Mapped[str] = mapped_column(String(32), index=True)
+    phone_hash: Mapped[str] = mapped_column(String(80), index=True)
+    purpose: Mapped[str] = mapped_column(String(40), index=True)
+    code_hash: Mapped[str] = mapped_column(String(120))
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    used_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    request_ip: Mapped[str] = mapped_column(String(80), default="")
+    provider_message_id: Mapped[str] = mapped_column(String(120), default="")
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class InviteCode(Base):
+    __tablename__ = "invite_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code_hash: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    label: Mapped[str] = mapped_column(String(120), default="")
+    max_uses: Mapped[int] = mapped_column(Integer, default=1)
+    used_count: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
 
 class Streamer(Base):

@@ -1,11 +1,12 @@
 import json
+import secrets
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from secrets import token_urlsafe
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -36,6 +37,7 @@ from app.models import (
     AudioChunk,
     ContentAnalysis,
     GrowthTask,
+    InviteCode,
     LiveSession,
     ModelCallLog,
     ModelSetting,
@@ -54,6 +56,7 @@ from app.models import (
     RuleInterpretation,
     RuleVersion,
     ScreenshotRecognition,
+    SmsVerificationCode,
     SpeechRisk,
     Streamer,
     TranscriptSegment,
@@ -63,6 +66,7 @@ from app.models import (
     UserPlatformAccount,
 )
 from app.platform_oauth import DouyinOAuthProvider
+from app.rate_limit import rate_limiter
 from app.schemas import (
     AccountDeletionRequest,
     AuthLogin,
@@ -74,6 +78,8 @@ from app.schemas import (
     ModelSettingIn,
     ModelSettingUpdate,
     PasswordChange,
+    PasswordResetConfirm,
+    PasswordResetStart,
     PlatformAccountCreate,
     PlatformAccountUpdate,
     PlatformMemberCreate,
@@ -86,6 +92,8 @@ from app.schemas import (
     RuleCreate,
     RuleUpdate,
     ScreenshotOrderUpdate,
+    SmsCodeRequest,
+    SmsCodeVerify,
     StreamerCreate,
     StreamerUpdate,
 )
@@ -93,10 +101,20 @@ from app.security import (
     create_token,
     decrypt_secret,
     encrypt_secret,
+    hash_invite_code,
     hash_password,
+    hash_phone,
+    hash_verification_code,
     mask_secret,
+    normalize_phone,
+    normalize_username,
+    validate_username,
     verify_password,
 )
+from app.security import (
+    mask_phone as mask_user_phone,
+)
+from app.sms import generate_sms_code, get_sms_provider
 from app.storage import get_storage, safe_storage_filename
 
 router = APIRouter(prefix="/api")
@@ -131,36 +149,247 @@ def ready(db: Session = Depends(get_db)) -> dict:
     return {"ok": all(checks.values()), "name": settings.app_name, "checks": checks}
 
 
+def client_ip(request: Optional[Request]) -> str:
+    if not request or not request.client:
+        return "test"
+    return request.client.host or "unknown"
+
+
+def public_user(user: User) -> dict:
+    return {
+        "id": user.id,
+        "name": user.name,
+        "nickname": user.nickname or user.name,
+        "username": user.username or "",
+    }
+
+
+def verify_registration_mode(invite_code: str, db: Session) -> None:
+    settings = get_settings()
+    mode = settings.registration_mode
+    if mode == "closed":
+        raise HTTPException(status_code=403, detail="当前暂未开放注册。")
+    if mode != "invite":
+        return
+    provided_hash = hash_invite_code(invite_code)
+    row = db.scalar(select(InviteCode).where(InviteCode.code_hash == provided_hash, InviteCode.is_active.is_(True)))
+    if row:
+        if row.expires_at and row.expires_at < datetime.utcnow():
+            raise HTTPException(status_code=400, detail="邀请码无效或已过期")
+        if row.used_count >= row.max_uses:
+            raise HTTPException(status_code=400, detail="邀请码无效或已过期")
+        return
+    if settings.invite_code and secrets.compare_digest(invite_code.strip(), settings.invite_code):
+        return
+    raise HTTPException(status_code=400, detail="邀请码无效")
+
+
+def consume_invite_code(invite_code: str, db: Session) -> None:
+    if get_settings().registration_mode != "invite":
+        return
+    row = db.scalar(select(InviteCode).where(InviteCode.code_hash == hash_invite_code(invite_code), InviteCode.is_active.is_(True)))
+    if row:
+        row.used_count += 1
+        row.last_used_at = datetime.utcnow()
+
+
+def find_user_by_account(account: str, db: Session) -> Optional[User]:
+    value = account.strip()
+    if not value:
+        return None
+    try:
+        phone_normalized = normalize_phone(value)
+    except ValueError:
+        phone_normalized = ""
+    if phone_normalized:
+        return db.scalar(select(User).where((User.phone_normalized == phone_normalized) | (User.phone == value)))
+    return db.scalar(select(User).where(User.username_normalized == normalize_username(value)))
+
+
+def latest_sms_record(phone_normalized: str, purpose: str, db: Session) -> Optional[SmsVerificationCode]:
+    return db.scalar(
+        select(SmsVerificationCode)
+        .where(SmsVerificationCode.phone_normalized == phone_normalized, SmsVerificationCode.purpose == purpose)
+        .order_by(SmsVerificationCode.id.desc())
+    )
+
+
+def consume_sms_code(phone_normalized: str, purpose: str, code: str, db: Session) -> None:
+    settings = get_settings()
+    record = latest_sms_record(phone_normalized, purpose, db)
+    if not record or record.used_at or record.expires_at < datetime.utcnow() or record.status != "sent":
+        raise HTTPException(status_code=400, detail="验证码不正确或已过期")
+    if record.attempt_count >= settings.verification_max_attempts:
+        raise HTTPException(status_code=429, detail="验证码错误次数过多，请重新获取")
+    record.attempt_count += 1
+    if not secrets.compare_digest(record.code_hash, hash_verification_code(phone_normalized, purpose, code)):
+        db.commit()
+        raise HTTPException(status_code=400, detail="验证码不正确或已过期")
+    record.used_at = datetime.utcnow()
+    record.status = "used"
+    db.commit()
+
+
+@router.get("/auth/registration-mode")
+def registration_mode() -> dict:
+    settings = get_settings()
+    return {"mode": settings.registration_mode, "sms_enabled": settings.sms_enabled or settings.sms_provider == "mock"}
+
+
+@router.post("/auth/sms/send")
+def send_sms_code(payload: SmsCodeRequest, db: Session = Depends(get_db), request: Request = None) -> dict:
+    settings = get_settings()
+    phone_normalized = normalize_phone(payload.phone)
+    ip = client_ip(request)
+    rate_limiter.check(
+        f"sms:phone:minute:{payload.purpose}:{phone_normalized}",
+        1,
+        settings.sms_send_interval_seconds,
+        "验证码发送太频繁，请稍后再试。",
+    )
+    rate_limiter.check(f"sms:phone:hour:{phone_normalized}", settings.sms_hourly_limit_per_phone, 3600, "验证码发送次数过多，请稍后再试。")
+    rate_limiter.check(f"sms:phone:day:{phone_normalized}", settings.sms_daily_limit_per_phone, 86400, "今天验证码发送次数已达上限。")
+    rate_limiter.check(f"sms:ip:hour:{ip}", settings.sms_hourly_limit_per_ip, 3600, "当前网络请求验证码次数较多，请稍后再试。")
+
+    if payload.purpose == "reset_password":
+        user = find_user_by_account(payload.phone, db)
+        if not user:
+            return {"ok": True, "message": "如果账号存在，验证码会发送到绑定手机号。"}
+        phone_normalized = user.phone_normalized or normalize_phone(user.phone)
+
+    db.query(SmsVerificationCode).filter(
+        SmsVerificationCode.phone_normalized == phone_normalized,
+        SmsVerificationCode.purpose == payload.purpose,
+        SmsVerificationCode.used_at.is_(None),
+    ).update({"status": "replaced", "used_at": datetime.utcnow()})
+    code = generate_sms_code()
+    provider = get_sms_provider(settings)
+    delivery = provider.send_verification_code(phone_normalized, code, payload.purpose)
+    if not delivery.ok:
+        raise HTTPException(status_code=503, detail=delivery.message or "短信服务暂时不可用")
+    row = SmsVerificationCode(
+        phone_normalized=phone_normalized,
+        phone_hash=hash_phone(phone_normalized),
+        purpose=payload.purpose,
+        code_hash=hash_verification_code(phone_normalized, payload.purpose, code),
+        expires_at=datetime.utcnow() + timedelta(seconds=settings.sms_code_ttl_seconds),
+        request_ip=ip,
+        provider_message_id=delivery.provider_message_id,
+        status="sent",
+    )
+    db.add(row)
+    db.commit()
+    response = {"ok": True, "message": delivery.message or "验证码已发送。", "phone_masked": mask_user_phone(phone_normalized)}
+    if not settings.is_production and settings.sms_provider == "mock":
+        response["debug_code"] = code
+    return response
+
+
+@router.post("/auth/sms/verify")
+def verify_sms_code(payload: SmsCodeVerify, db: Session = Depends(get_db)) -> dict:
+    phone_normalized = normalize_phone(payload.phone)
+    consume_sms_code(phone_normalized, payload.purpose, payload.code, db)
+    return {"ok": True, "message": "手机号验证通过。"}
+
+
 @router.post("/auth/register")
-def register(payload: AuthRegister, db: Session = Depends(get_db)) -> dict:
-    if payload.invite_code != get_settings().invite_code:
-        raise HTTPException(status_code=400, detail="邀请码无效")
-    exists = db.scalar(select(User).where(User.phone == payload.phone))
+def register(payload: AuthRegister, db: Session = Depends(get_db), request: Request = None) -> dict:
+    settings = get_settings()
+    rate_limiter.check(f"register:ip:{client_ip(request)}", settings.register_hourly_limit_per_ip, 3600, "注册请求较多，请稍后再试。")
+    verify_registration_mode(payload.invite_code, db)
+    if not payload.accepted_terms:
+        raise HTTPException(status_code=400, detail="请先阅读并同意服务条款和隐私政策")
+    if payload.password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="两次输入的密码不一致")
+    username_normalized = validate_username(payload.username)
+    phone_normalized = normalize_phone(payload.phone)
+    consume_sms_code(phone_normalized, "register", payload.sms_code, db)
+    exists = db.scalar(
+        select(User).where(
+            (User.username_normalized == username_normalized)
+            | (User.phone_normalized == phone_normalized)
+            | (User.phone == payload.phone)
+        )
+    )
     if exists:
+        if exists.username_normalized == username_normalized:
+            raise HTTPException(status_code=400, detail="该用户名已被使用，请更换一个。")
         raise HTTPException(status_code=400, detail="手机号已注册")
-    user = User(phone=payload.phone, name=payload.name, password_hash=hash_password(payload.password))
+    nickname = (payload.nickname or payload.name or "LivePilot用户").strip()
+    user = User(
+        phone=phone_normalized,
+        phone_normalized=phone_normalized,
+        phone_verified_at=datetime.utcnow(),
+        username=payload.username.strip(),
+        username_normalized=username_normalized,
+        name=nickname,
+        nickname=nickname,
+        password_hash=hash_password(payload.password),
+        status="active",
+        token_version=1,
+    )
     db.add(user)
+    consume_invite_code(payload.invite_code, db)
     db.commit()
     db.refresh(user)
-    return {"access_token": create_token(user), "token_type": "bearer", "user": {"id": user.id, "name": user.name}}
+    return {"access_token": create_token(user), "token_type": "bearer", "user": public_user(user)}
 
 
 @router.post("/auth/login")
 def login(payload: AuthLogin, db: Session = Depends(get_db)) -> dict:
-    user = db.scalar(select(User).where(User.phone == payload.phone))
+    normalized = normalize_username(payload.username)
+    rate_limiter.check(f"login:{normalized}", get_settings().login_fail_hourly_limit, 3600, "登录尝试次数较多，请稍后再试。")
+    user = db.scalar(select(User).where(User.username_normalized == normalized))
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=400, detail="手机号或密码不正确")
-    if user.is_deleted:
+        raise HTTPException(status_code=400, detail="用户名或密码不正确")
+    if user.is_deleted or user.status != "active":
         raise HTTPException(status_code=403, detail="账号已停用，请联系管理员处理。")
-    return {"access_token": create_token(user), "token_type": "bearer", "user": {"id": user.id, "name": user.name}}
+    user.last_login_at = datetime.utcnow()
+    db.commit()
+    return {"access_token": create_token(user), "token_type": "bearer", "user": public_user(user)}
+
+
+@router.post("/auth/password-reset/start")
+def start_password_reset(payload: PasswordResetStart, db: Session = Depends(get_db), request: Request = None) -> dict:
+    rate_limiter.check(f"reset:ip:{client_ip(request)}", 20, 3600, "找回密码请求较多，请稍后再试。")
+    user = find_user_by_account(payload.account, db)
+    if not user or user.is_deleted or user.status != "active":
+        return {"ok": True, "message": "如果账号存在，验证码会发送到绑定手机号。"}
+    return send_sms_code(SmsCodeRequest(phone=user.phone_normalized or user.phone, purpose="reset_password"), db, request)
+
+
+@router.post("/auth/password-reset/confirm")
+def confirm_password_reset(payload: PasswordResetConfirm, db: Session = Depends(get_db)) -> dict:
+    if payload.new_password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="两次输入的新密码不一致")
+    user = find_user_by_account(payload.account, db)
+    if not user or user.is_deleted or user.status != "active":
+        raise HTTPException(status_code=400, detail="验证码或账号信息不正确")
+    phone_normalized = user.phone_normalized or normalize_phone(user.phone)
+    consume_sms_code(phone_normalized, "reset_password", payload.sms_code, db)
+    if verify_password(payload.new_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="新密码不能与旧密码相同")
+    user.password_hash = hash_password(payload.new_password)
+    user.token_version += 1
+    user.updated_at = datetime.utcnow()
+    db.query(SmsVerificationCode).filter(
+        SmsVerificationCode.phone_normalized == phone_normalized,
+        SmsVerificationCode.purpose == "reset_password",
+        SmsVerificationCode.used_at.is_(None),
+    ).update({"status": "replaced", "used_at": datetime.utcnow()})
+    db.commit()
+    return {"ok": True, "message": "密码已修改，请使用用户名和新密码登录。"}
 
 
 @router.get("/me")
 def me(user: User = Depends(current_user)) -> dict:
     return {
         "id": user.id,
+        "username": user.username or "",
         "name": user.name,
-        "phone": user.phone,
+        "nickname": user.nickname or user.name,
+        "phone": mask_user_phone(user.phone_normalized or user.phone),
+        "phone_verified": bool(user.phone_verified_at),
         "default_streamer_id": user.default_streamer_id,
         "deletion_requested_at": user.deletion_requested_at.isoformat() if user.deletion_requested_at else "",
     }
@@ -171,9 +400,13 @@ def change_password(payload: PasswordChange, user: User = Depends(current_user),
     row = db.get(User, user.id)
     if not row or not verify_password(payload.old_password, row.password_hash):
         raise HTTPException(status_code=400, detail="原密码不正确")
+    if verify_password(payload.new_password, row.password_hash):
+        raise HTTPException(status_code=400, detail="新密码不能与旧密码相同")
     row.password_hash = hash_password(payload.new_password)
+    row.token_version += 1
+    row.updated_at = datetime.utcnow()
     db.commit()
-    return {"ok": True, "message": "密码已修改，请下次使用新密码登录。"}
+    return {"ok": True, "message": "密码已修改，请重新登录。"}
 
 
 @router.get("/account/export")

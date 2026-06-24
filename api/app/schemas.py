@@ -7,22 +7,49 @@ from pydantic import BaseModel, Field, field_validator
 
 class AuthRegister(BaseModel):
     phone: str
-    name: str = Field(min_length=1)
+    sms_code: str = Field(default="", min_length=4, max_length=8)
+    username: str = Field(default="", min_length=4, max_length=32)
+    nickname: str = ""
+    name: str = ""
     password: str = Field(min_length=6)
-    invite_code: str
+    confirm_password: str = ""
+    invite_code: str = ""
+    accepted_terms: bool = False
 
-    @field_validator("name")
+    @field_validator("username")
     @classmethod
-    def name_required(cls, value: str) -> str:
+    def username_required(cls, value: str) -> str:
         value = value.strip()
         if not value:
-            raise ValueError("昵称不能为空")
+            raise ValueError("用户名不能为空")
         return value
 
 
 class AuthLogin(BaseModel):
-    phone: str
+    username: str = ""
     password: str
+
+
+class SmsCodeRequest(BaseModel):
+    phone: str
+    purpose: Literal["register", "reset_password", "change_phone_old", "change_phone_new"]
+
+
+class SmsCodeVerify(BaseModel):
+    phone: str
+    purpose: Literal["register", "reset_password", "change_phone_old", "change_phone_new"]
+    code: str
+
+
+class PasswordResetStart(BaseModel):
+    account: str = Field(min_length=1)
+
+
+class PasswordResetConfirm(BaseModel):
+    account: str = Field(min_length=1)
+    sms_code: str = Field(min_length=4, max_length=8)
+    new_password: str = Field(min_length=6)
+    confirm_password: str
 
 
 class TokenResponse(BaseModel):
