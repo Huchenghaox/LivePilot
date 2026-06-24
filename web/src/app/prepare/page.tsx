@@ -183,7 +183,7 @@ export default function PreparePage() {
       <PageTitle title="开播准备" desc="输入下一场方向，生成可直接使用的标题、开场、互动和风险提醒。" />
       {loading ? <StatusMessage type="loading" text="正在读取开播准备..." /> : null}
       {error ? <div className="mb-4"><StatusMessage type="error" text={error} onRetry={load} /></div> : null}
-      {message ? <div className="mb-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div> : null}
+      {message ? <div className="mb-4 rounded-2xl border border-success/30 bg-success/10 p-3 text-sm text-success">{message}</div> : null}
       {!loading && !streamers.length ? (
         <Card>
           <StatusMessage type="empty" text="还没有可用主播。先创建主播档案，再生成开播方案。" />
@@ -191,8 +191,15 @@ export default function PreparePage() {
       ) : null}
       {streamers.length ? (
         <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card>
-            <h2 className="mb-4 text-lg font-bold">告诉AI下一场播什么</h2>
+          <Card className="relative overflow-hidden">
+            <div className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-brand/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-48 w-48 rounded-full bg-coral/10 blur-3xl" />
+            <div className="relative">
+            <div className="mb-5">
+              <div className="text-xs font-semibold text-brand">AI 开播编导</div>
+              <h2 className="mt-1 text-xl font-bold text-slate-50">告诉AI下一场播什么</h2>
+              <p className="mt-2 text-sm text-slate-500">字段保持少一点，剩下的让 AI 结合主播档案和规则提醒补齐。</p>
+            </div>
             <label className="mb-2 block text-sm font-medium">选择主播</label>
             <select className="mb-3 w-full rounded-md border border-slate-300 px-3 py-2" value={streamerId} onChange={(event) => {
               setStreamerId(event.target.value);
@@ -209,9 +216,9 @@ export default function PreparePage() {
                 </select>
               </>
             ) : platformAccounts.length === 1 ? (
-              <div className="mb-3 rounded-md bg-slate-50 p-3 text-sm text-slate-600">当前抖音账号：{platformAccounts[0].display_name}</div>
+              <div className="mb-3 rounded-2xl border border-brand/20 bg-brand/5 p-3 text-sm text-slate-300">当前抖音账号：{platformAccounts[0].display_name}</div>
             ) : (
-              <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">当前主播未绑定抖音账号，仍可生成通用开播方案。</div>
+              <div className="mb-3 rounded-2xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">当前主播未绑定抖音账号，仍可生成通用开播方案。</div>
             )}
             <label className="mb-2 block text-sm font-medium">下一场大致主题</label>
             <input className="mb-3 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="例如 新手主播怎么留人" value={topic} onChange={(event) => setTopic(event.target.value)} />
@@ -226,11 +233,11 @@ export default function PreparePage() {
               {liveForms.map((item) => <option key={item}>{item}</option>)}
             </select>
             <div className="mb-3 grid gap-2 md:grid-cols-2">
-              <label className="flex items-center gap-2 rounded-md bg-slate-50 p-3 text-sm">
+              <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300">
                 <input type="checkbox" checked={hasCohost} onChange={(event) => setHasCohost(event.target.checked)} />
                 本场可能连麦
               </label>
-              <label className="flex items-center gap-2 rounded-md bg-slate-50 p-3 text-sm">
+              <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300">
                 <input type="checkbox" checked={hasEcommerce} onChange={(event) => setHasEcommerce(event.target.checked)} />
                 有带货或服务转化
               </label>
@@ -240,11 +247,19 @@ export default function PreparePage() {
             <PrimaryButton disabled={!streamerId || !topic || working} onClick={() => void generate()}>
               {working ? "正在生成..." : current ? "换一批" : "生成开播方案"}
             </PrimaryButton>
+            {working ? <div className="mt-4 rounded-2xl border border-brand/25 bg-brand/10 p-3 text-sm text-brand">AI 正在整理主题、标题、开场话术和风险提醒...</div> : null}
+            </div>
           </Card>
 
           <div className="space-y-5">
             <Card>
-              <h2 className="mb-4 text-lg font-bold">开播方案</h2>
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold text-brand">生成结果</div>
+                  <h2 className="mt-1 text-xl font-bold text-slate-50">开播方案</h2>
+                </div>
+                {current ? <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">{current.is_used ? "已使用" : "未使用"}</span> : null}
+              </div>
               {!current ? <StatusMessage type="empty" text="填写主题后生成方案。完整长稿后续开放。" /> : null}
               {current && draftPlan ? (
                 <PlanView
@@ -260,15 +275,15 @@ export default function PreparePage() {
               ) : null}
             </Card>
             <Card>
-              <h2 className="mb-3 text-lg font-bold">最近保存的方案</h2>
+              <h2 className="mb-3 text-xl font-bold text-slate-50">最近保存的方案</h2>
               {!plans.length ? <StatusMessage type="empty" text="还没有保存过开播方案。" /> : null}
               <div className="space-y-2">
                 {plans.slice(0, 5).map((item) => (
-                  <button key={item.id} className="w-full rounded-md border border-slate-200 p-3 text-left" onClick={() => {
+                  <button key={item.id} className="w-full rounded-2xl border border-white/10 bg-black/20 p-3 text-left transition hover:border-brand/30" onClick={() => {
                     setCurrent(item);
                     setDraftPlan(item.plan);
                   }}>
-                    <div className="font-semibold">{item.topic}</div>
+                    <div className="font-semibold text-slate-50">{item.topic}</div>
                     <div className="mt-1 text-xs text-slate-500">{item.goal} · {item.live_form || "直播形式未标注"} · {item.duration_minutes}分钟 · {item.is_used ? "已使用" : "未使用"} · {new Date(item.created_at).toLocaleString("zh-CN")}</div>
                   </button>
                 ))}
@@ -302,7 +317,16 @@ function PlanView({
 }) {
   return (
     <div className="space-y-4">
-      <Info title="首选主题" text={plan.recommended_theme} working={working} onCopy={onCopy} onChange={(value) => onChange({ recommended_theme: value })} onRegenerate={onRegenerate} />
+      <div className="rounded-2xl border border-brand/25 bg-brand/10 p-4">
+        <div className="mb-2 text-xs font-semibold text-brand">首选主题</div>
+        <textarea className="min-h-20 w-full rounded-xl border border-brand/20 bg-black/20 px-3 py-2 text-base font-semibold leading-7 text-slate-50" value={plan.recommended_theme} onChange={(event) => onChange({ recommended_theme: event.target.value })} />
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button className="rounded-xl border border-brand/30 px-3 py-1.5 text-xs font-semibold text-brand" onClick={() => onCopy(plan.recommended_theme)}>复制</button>
+          <button className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 disabled:opacity-50" disabled={working} onClick={() => onRegenerate("首选主题")}>
+            {working ? "生成中..." : "按当前信息换一版"}
+          </button>
+        </div>
+      </div>
       <PlanList title="备选主题" items={plan.backup_themes} working={working} onCopy={onCopy} onChange={(items) => onChange({ backup_themes: items })} onRegenerate={onRegenerate} />
       <PlanList title="5条标题" items={plan.titles} working={working} onCopy={onCopy} onChange={(items) => onChange({ titles: items })} onRegenerate={onRegenerate} />
       <Info title="开场3分钟" text={plan.opening_3_minutes} working={working} onCopy={onCopy} onChange={(value) => onChange({ opening_3_minutes: value })} onRegenerate={onRegenerate} />
@@ -313,10 +337,10 @@ function PlanView({
       <PlanList title="合规注意事项" items={plan.risk_notes} working={working} onCopy={onCopy} onChange={(items) => onChange({ risk_notes: items })} onRegenerate={onRegenerate} />
       <PlanList title="下一场目标指标" items={plan.target_metrics ?? []} working={working} onCopy={onCopy} onChange={(items) => onChange({ target_metrics: items })} onRegenerate={onRegenerate} />
       <div className="flex flex-wrap gap-2">
-        <button className="rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={working} onClick={onSave}>
+        <button className="brand-gradient rounded-xl px-3 py-2 text-sm font-semibold text-ink shadow-glow disabled:opacity-50" disabled={working} onClick={onSave}>
           {working ? "正在保存..." : "保存修改"}
         </button>
-        <button className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled={isUsed} onClick={onMarkUsed}>
+        <button className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 disabled:opacity-50" disabled={isUsed} onClick={onMarkUsed}>
         {isUsed ? "已标记使用" : "标记为已使用"}
         </button>
       </div>
@@ -340,12 +364,12 @@ function Info({
   onRegenerate: (sectionName: string) => void;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-3">
-      <div className="mb-1 font-semibold">{title}</div>
-      <textarea className="min-h-24 w-full rounded-md border border-slate-200 px-3 py-2 text-sm leading-6 text-slate-600" value={text} onChange={(event) => onChange(event.target.value)} />
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div className="mb-1 font-semibold text-slate-100">{title}</div>
+      <textarea className="min-h-24 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm leading-6 text-slate-300" value={text} onChange={(event) => onChange(event.target.value)} />
       <div className="mt-2 flex flex-wrap gap-2">
-        <button className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold" onClick={() => onCopy(text)}>复制</button>
-        <button className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold disabled:opacity-50" disabled={working} onClick={() => onRegenerate(title)}>
+        <button className="rounded-xl border border-brand/25 bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand" onClick={() => onCopy(text)}>复制</button>
+        <button className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 disabled:opacity-50" disabled={working} onClick={() => onRegenerate(title)}>
           {working ? "生成中..." : "按当前信息换一版"}
         </button>
       </div>
@@ -371,12 +395,12 @@ function PlanList({
   const text = items.join("\n");
   const updateItems = (value: string) => onChange(value.split("\n").map((item) => item.trim()).filter(Boolean));
   return (
-    <div className="rounded-md border border-slate-200 p-3">
-      <div className="mb-2 font-semibold">{title}</div>
-      <textarea className="min-h-28 w-full rounded-md border border-slate-200 px-3 py-2 text-sm leading-6 text-slate-600" value={text} onChange={(event) => updateItems(event.target.value)} />
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div className="mb-2 font-semibold text-slate-100">{title}</div>
+      <textarea className="min-h-28 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm leading-6 text-slate-300" value={text} onChange={(event) => updateItems(event.target.value)} />
       <div className="mt-2 flex flex-wrap gap-2">
-        <button className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold" onClick={() => onCopy(text)}>复制全部</button>
-        <button className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold disabled:opacity-50" disabled={working} onClick={() => onRegenerate(title)}>
+        <button className="rounded-xl border border-brand/25 bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand" onClick={() => onCopy(text)}>复制全部</button>
+        <button className="rounded-xl border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 disabled:opacity-50" disabled={working} onClick={() => onRegenerate(title)}>
           {working ? "生成中..." : "按当前信息换一版"}
         </button>
       </div>

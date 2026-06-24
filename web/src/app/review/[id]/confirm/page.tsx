@@ -116,6 +116,8 @@ const textMetricKeys = new Set([
   "violation_note"
 ]);
 
+const generationSteps = ["整理数据", "基础诊断", "匹配规则", "AI分析", "生成方案"];
+
 export default function ConfirmPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -236,19 +238,36 @@ export default function ConfirmPage() {
   return (
     <>
       <PageTitle title="确认识别数据" desc="先确认关键数据，再生成复盘。低置信度和冲突数据会突出显示。" />
+      <div className="mb-5 rounded-2xl border border-white/10 bg-panel/70 p-4 shadow-card backdrop-blur">
+        <div className="hidden items-center gap-3 md:flex">
+          {["基础信息", "数据录入", "确认数据", "规则与方式", "AI报告"].map((step, index) => (
+            <div key={step} className="flex min-w-0 flex-1 items-center gap-3">
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${index < 2 ? "border border-success/30 bg-success/10 text-success" : index === 2 ? "brand-gradient text-ink shadow-glow" : "border border-white/10 bg-white/5 text-slate-400"}`}>
+                {index + 1}
+              </div>
+              <div className={index === 2 ? "truncate text-sm font-semibold text-slate-100" : "truncate text-sm text-slate-500"}>{step}</div>
+              {index < 4 ? <div className="h-px flex-1 bg-white/10" /> : null}
+            </div>
+          ))}
+        </div>
+        <div className="md:hidden">
+          <div className="text-xs text-brand">第 3 步，共 5 步</div>
+          <div className="mt-1 text-sm font-semibold text-slate-100">确认数据并选择报告方式</div>
+        </div>
+      </div>
       {loading ? <StatusMessage type="loading" text="正在读取 AI 识别结果..." /> : null}
       {error ? <div className="mb-4"><StatusMessage type="error" text={error} onRetry={load} /></div> : null}
       {metrics ? (
         <div className="space-y-5">
           <Card>
-            {metrics.notice ? <div className="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800">{metrics.notice}</div> : null}
+            {metrics.notice ? <div className="mb-4 rounded-2xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">{metrics.notice}</div> : null}
             {metrics.screenshot_types?.length ? (
               <div>
-                <div className="mb-3 text-sm font-bold">AI 自动识别的截图类型</div>
+                <div className="mb-3 text-sm font-bold text-slate-100">AI 自动识别的截图类型</div>
                 <div className="grid gap-2 md:grid-cols-2">
                   {metrics.screenshot_types.map((item) => (
-                    <div key={`${item.filename}-${item.type}`} className="rounded-md bg-slate-50 p-3 text-sm">
-                      <div className="font-medium">{item.type}</div>
+                    <div key={`${item.filename}-${item.type}`} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
+                      <div className="font-medium text-slate-100">{item.type}</div>
                       <div className="mt-1 text-xs text-slate-500">{item.filename}</div>
                       {item.reason ? <div className="mt-1 text-xs text-slate-500">{item.reason}</div> : null}
                     </div>
@@ -259,8 +278,11 @@ export default function ConfirmPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-2 text-lg font-bold">先确认核心指标</h2>
-            <p className="mb-4 text-sm text-slate-500">不用全部填写。没看到的数据留空即可，系统会按缺失处理，不会自动当成 0。</p>
+            <div className="mb-5">
+              <div className="text-xs font-semibold text-brand">正式分析前的关键一步</div>
+              <h2 className="mt-1 text-xl font-bold text-slate-50">先确认核心指标</h2>
+              <p className="mt-2 text-sm text-slate-500">不用全部填写。没看到的数据留空即可，系统会按缺失处理，不会自动当成 0。</p>
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
               {coreFields.map(({ field, index }) => (
                 <MetricInput key={`${field.metric_key}-${index}`} field={field} index={index} error={fieldErrors[field.metric_key]} onUpdate={updateField} />
@@ -269,7 +291,7 @@ export default function ConfirmPage() {
           </Card>
 
           <Card>
-            <h2 className="mb-3 text-lg font-bold">主播补充说明</h2>
+            <h2 className="mb-3 text-xl font-bold text-slate-50">主播补充说明</h2>
             <div className="grid gap-3 md:grid-cols-2">
               <TextInput label="本场直播主题" value={metrics.session_topic ?? ""} placeholder="例如 新手开播留人方法" onChange={(value) => setMetrics({ ...metrics, session_topic: value })} />
               <TextInput label="本场最想解决的问题" value={metrics.main_goal ?? ""} placeholder="例如 进来的人留不住" onChange={(value) => setMetrics({ ...metrics, main_goal: value })} />
@@ -280,29 +302,29 @@ export default function ConfirmPage() {
             </div>
           </Card>
 
-          <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <summary className="cursor-pointer text-lg font-bold">补充更多数据</summary>
+          <details className="rounded-2xl border border-white/10 bg-panel/80 p-5 shadow-card backdrop-blur">
+            <summary className="cursor-pointer text-lg font-bold text-slate-50">补充更多数据</summary>
             <div className="mt-5 space-y-5">
               {groupedFields.map(({ group, fields }) => (
-            <div key={group} className="rounded-md border border-slate-200 p-4">
+            <div key={group} className="rounded-2xl border border-white/10 bg-black/15 p-4">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold">{group}</h2>
+                <h2 className="text-lg font-bold text-slate-50">{group}</h2>
                 {!fields.length ? <span className="text-xs text-slate-400">暂无识别数据</span> : null}
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {fields.map(({ field, index }) => (
-                  <div key={`${field.id ?? "new"}-${index}`} className={`rounded-md border p-3 ${field.has_conflict ? "border-red-300 bg-red-50" : (field.confidence ?? 100) < 70 ? "border-amber-300 bg-amber-50" : "border-slate-200"}`}>
+                  <div key={`${field.id ?? "new"}-${index}`} className={`rounded-2xl border p-3 ${field.has_conflict ? "border-danger/30 bg-danger/10" : (field.confidence ?? 100) < 70 ? "border-warning/30 bg-warning/10" : "border-white/10 bg-white/5"}`}>
                     <div className="mb-2 flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium">{field.label}</div>
+                        <div className="font-medium text-slate-100">{field.label}</div>
                         <div className="mt-1 text-xs text-slate-500">
                           来源：{field.source_screenshot_type || "未标明"}{field.source_screenshot_id ? ` #${field.source_screenshot_id}` : ""}
                         </div>
                       </div>
-                      <button className="text-xs font-semibold text-red-600" onClick={() => updateField(index, { deleted: true })}>删除</button>
+                      <button className="text-xs font-semibold text-danger" onClick={() => updateField(index, { deleted: true })}>删除</button>
                     </div>
-                    {field.has_conflict ? <div className="mb-2 text-xs text-red-700">多张截图识别结果冲突，请确认正确值。</div> : null}
-                    {(field.confidence ?? 100) < 70 ? <div className="mb-2 text-xs text-amber-700">置信度较低，建议人工核对。</div> : null}
+                    {field.has_conflict ? <div className="mb-2 text-xs text-danger">多张截图识别结果冲突，请确认正确值。</div> : null}
+                    {(field.confidence ?? 100) < 70 ? <div className="mb-2 text-xs text-warning">置信度较低，建议人工核对。</div> : null}
                     {field.unreadable_reason ? <div className="mb-2 text-xs text-slate-500">{field.unreadable_reason}</div> : null}
                     <MetricValueInput field={field} index={index} error={fieldErrors[field.metric_key]} onUpdate={updateField} />
                     {field.raw_text ? <div className="mt-2 text-xs text-slate-500">原文：{field.raw_text}</div> : null}
@@ -316,13 +338,13 @@ export default function ConfirmPage() {
 
           <Card>
             <div className="flex flex-wrap gap-2">
-              <button className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={addField}>添加常用指标</button>
-              <button className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={addCustomField}>添加自定义指标</button>
+              <button className="rounded-xl border border-brand/25 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand" onClick={addField}>添加常用指标</button>
+              <button className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300" onClick={addCustomField}>添加自定义指标</button>
             </div>
             {metricFields.some((field) => isPendingManualField(field) && !field.deleted) ? (
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {metricFields.map((field, index) => isPendingManualField(field) && !field.deleted ? (
-                  <div key={`new-${index}`} className="rounded-md border border-slate-200 p-3">
+                  <div key={`new-${index}`} className="rounded-2xl border border-white/10 bg-white/5 p-3">
                     <select className="mb-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value={quickMetricOptions.some((item) => item[0] === field.metric_key) ? field.metric_key : "custom_metric"} onChange={(event) => {
                       const selected = quickMetricOptions.find((item) => item[0] === event.target.value) ?? quickMetricOptions[0];
                       if (selected[0] === "custom_metric") {
@@ -339,7 +361,7 @@ export default function ConfirmPage() {
                     <input className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="填写数值" value={String(field.final_value ?? "")} onChange={(event) => updateField(index, { final_value: event.target.value })} />
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <input className="rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="单位，可不填" value={field.unit} onChange={(event) => updateField(index, { unit: event.target.value })} />
-                      <button className="rounded-md border border-red-200 px-3 py-2 text-sm text-red-700" onClick={() => updateField(index, { deleted: true })}>删除</button>
+                      <button className="rounded-md border border-danger/30 px-3 py-2 text-sm text-danger" onClick={() => updateField(index, { deleted: true })}>删除</button>
                     </div>
                   </div>
                 ) : null)}
@@ -348,14 +370,14 @@ export default function ConfirmPage() {
           </Card>
 
           <Card>
-            <div className="mb-2 text-sm font-medium">报告方式</div>
+            <div className="mb-2 text-sm font-medium text-slate-100">报告方式</div>
             <div className="grid gap-2 md:grid-cols-3">
               {[
                 ["simple", "直接告诉我怎么改"],
                 ["professional", "给我专业分析"],
                 ["both", "两种都要"]
               ].map(([value, label]) => (
-                <button key={value} className={`rounded-md border p-3 text-sm ${reportType === value ? "border-brand bg-emerald-50 text-brand" : "border-slate-200"}`} onClick={() => setReportType(value as typeof reportType)}>
+                <button key={value} className={`rounded-2xl border p-3 text-sm font-semibold transition ${reportType === value ? "border-brand bg-brand/10 text-brand shadow-glow" : "border-white/10 bg-white/5 text-slate-300 hover:border-brand/30"}`} onClick={() => setReportType(value as typeof reportType)}>
                   {label}
                 </button>
               ))}
@@ -368,7 +390,7 @@ export default function ConfirmPage() {
                 value={temporaryInstruction}
                 onChange={(event) => setTemporaryInstruction(event.target.value)}
               />
-              <label className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+              <label className="mt-2 flex items-center gap-2 text-sm text-slate-400">
                 <input type="checkbox" checked={saveTemporaryAsRule} onChange={(event) => setSaveTemporaryAsRule(event.target.checked)} />
                 保存为该主播的长期提醒，稍后在规则与提示中确认生效
               </label>
@@ -376,9 +398,18 @@ export default function ConfirmPage() {
             <PrimaryButton className="mt-5" disabled={working} onClick={generate}>
               {working ? generationStep || "正在生成报告..." : "确认并生成报告"}
             </PrimaryButton>
-            {working ? <div className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">{generationStep}</div> : null}
+            {working ? (
+              <div className="mt-4 rounded-2xl border border-brand/25 bg-brand/10 p-4">
+                <div className="mb-3 text-sm font-semibold text-brand">{generationStep}</div>
+                <div className="grid gap-2 md:grid-cols-5">
+                  {generationSteps.map((step) => (
+                    <div key={step} className={`rounded-xl border px-3 py-2 text-xs ${generationStep.includes(step.slice(0, 2)) ? "border-brand/40 bg-brand/15 text-brand" : "border-white/10 bg-white/5 text-slate-500"}`}>{step}</div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </Card>
-          <div className="sticky bottom-4 z-10 rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+          <div className="sticky bottom-4 z-10 rounded-2xl border border-white/10 bg-panel/90 p-3 shadow-card backdrop-blur">
             <PrimaryButton className="w-full" disabled={working} onClick={generate}>
               {working ? generationStep || "正在生成报告..." : "确认并生成报告"}
             </PrimaryButton>
@@ -508,8 +539,8 @@ function normalizeClientValue(value: string) {
 function MetricInput({ field, index, error, onUpdate }: { field: MetricField; index: number; error?: string; onUpdate: (index: number, patch: Partial<MetricField>) => void }) {
   if (field.metric_key === "has_paid_promotion" || field.metric_key === "has_violation") {
     return (
-      <div className="rounded-md border border-slate-200 p-3">
-        <label className="mb-1 block text-sm font-medium">{field.label}</label>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+        <label className="mb-1 block text-sm font-medium text-slate-100">{field.label}</label>
         <select className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value={boolToSelect(field.final_value as boolean | null)} onChange={(event) => onUpdate(index, { final_value: selectToBool(event.target.value) })}>
           <option value="">未填写</option>
           <option value="no">否</option>
@@ -519,8 +550,8 @@ function MetricInput({ field, index, error, onUpdate }: { field: MetricField; in
     );
   }
   return (
-    <div className={`rounded-md border p-3 ${error ? "border-red-300 bg-red-50" : "border-slate-200"}`}>
-      <label className="mb-1 block text-sm font-medium">{field.label}{field.unit ? <span className="ml-1 text-xs text-slate-400">单位：{field.unit}</span> : null}</label>
+    <div className={`rounded-2xl border p-3 ${error ? "border-danger/30 bg-danger/10" : "border-white/10 bg-white/5"}`}>
+      <label className="mb-1 block text-sm font-medium text-slate-100">{field.label}{field.unit ? <span className="ml-1 text-xs text-slate-500">单位：{field.unit}</span> : null}</label>
       <MetricValueInput field={field} index={index} error={error} onUpdate={onUpdate} />
       <div className="mt-1 text-xs text-slate-400">{coreMetricOptions.find((item) => item[0] === field.metric_key)?.[4] ?? "可留空"}</div>
     </div>
@@ -531,10 +562,10 @@ function MetricValueInput({ field, index, error, onUpdate }: { field: MetricFiel
   return (
     <>
       <div className="grid grid-cols-[1fr_80px] gap-2">
-        <input className={`rounded-md border px-3 py-2 text-sm ${error ? "border-red-300" : "border-slate-300"}`} value={String(field.final_value ?? "")} onChange={(event) => onUpdate(index, { final_value: event.target.value })} />
+        <input className={`rounded-md border px-3 py-2 text-sm ${error ? "border-danger/40" : "border-slate-300"}`} value={String(field.final_value ?? "")} onChange={(event) => onUpdate(index, { final_value: event.target.value })} />
         <input className="rounded-md border border-slate-300 px-3 py-2 text-sm" value={field.unit} onChange={(event) => onUpdate(index, { unit: event.target.value })} />
       </div>
-      {error ? <div className="mt-1 text-xs text-red-600">{error}</div> : null}
+      {error ? <div className="mt-1 text-xs text-danger">{error}</div> : null}
     </>
   );
 }
@@ -542,7 +573,7 @@ function MetricValueInput({ field, index, error, onUpdate }: { field: MetricFiel
 function TextInput({ label, value, placeholder, onChange }: { label: string; value: string; placeholder: string; onChange: (value: string) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-slate-100">{label}</span>
       <input className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
@@ -551,7 +582,7 @@ function TextInput({ label, value, placeholder, onChange }: { label: string; val
 function SelectInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-slate-100">{label}</span>
       <select className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">未填写</option>
         <option value="no">否</option>

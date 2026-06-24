@@ -45,6 +45,16 @@ type SelectedScreenshot = {
   error: string;
 };
 
+const reviewSteps = ["基础信息", "数据录入", "确认数据", "规则与方式", "AI报告"];
+
+const statusText: Record<string, string> = {
+  draft: "草稿",
+  metrics_recognized: "待确认数据",
+  metrics_confirmed: "待生成报告",
+  reported: "已生成报告",
+  archived: "已归档"
+};
+
 export default function ReviewPage() {
   const [streamers, setStreamers] = useState<Streamer[]>([]);
   const [sessions, setSessions] = useState<LiveSession[]>([]);
@@ -315,17 +325,41 @@ export default function ReviewPage() {
   return (
     <>
       <PageTitle title="直播复盘" desc="上传抖音后台截图，AI 先识别关键数据，再生成下一场行动。" />
+      <div className="mb-5 rounded-2xl border border-white/10 bg-panel/70 p-4 shadow-card backdrop-blur">
+        <div className="hidden items-center gap-3 md:flex">
+          {reviewSteps.map((step, index) => (
+            <div key={step} className="flex min-w-0 flex-1 items-center gap-3">
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${index === 0 ? "brand-gradient text-ink shadow-glow" : "border border-white/10 bg-white/5 text-slate-400"}`}>
+                {index + 1}
+              </div>
+              <div className={index === 0 ? "truncate text-sm font-semibold text-slate-100" : "truncate text-sm text-slate-500"}>{step}</div>
+              {index < reviewSteps.length - 1 ? <div className="h-px flex-1 bg-white/10" /> : null}
+            </div>
+          ))}
+        </div>
+        <div className="md:hidden">
+          <div className="text-xs text-brand">第 1 步，共 5 步</div>
+          <div className="mt-1 text-sm font-semibold text-slate-100">基础信息与数据来源</div>
+        </div>
+      </div>
       {loading ? <StatusMessage type="loading" text="正在准备复盘流程..." /> : null}
       {error ? <div className="mb-4"><StatusMessage type="error" text={error} onRetry={load} /></div> : null}
       {!loading && !streamers.length ? (
         <Card>
           <StatusMessage type="empty" text="还没有主播档案。先创建一个主播，再上传复盘。" />
-          <Link className="mt-4 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white" href="/streamers">去创建主播</Link>
+          <Link className="brand-gradient mt-4 inline-flex rounded-xl px-4 py-2 text-sm font-semibold text-ink shadow-glow" href="/streamers">去创建主播</Link>
         </Card>
       ) : (
         <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-          <Card>
-            <h2 className="mb-4 text-lg font-bold">新建复盘</h2>
+          <Card className="relative overflow-hidden">
+            <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-brand/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-16 h-44 w-44 rounded-full bg-coral/10 blur-3xl" />
+            <div className="relative">
+            <div className="mb-5">
+              <div className="text-xs font-semibold text-brand">新一场直播数据</div>
+              <h2 className="mt-1 text-xl font-bold text-slate-50">新建复盘</h2>
+              <p className="mt-2 text-sm text-slate-400">先保存基础信息，再上传截图或直接手动填写关键数据。</p>
+            </div>
             <label className="mb-2 block text-sm font-medium">选择主播</label>
             <select className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2" value={streamerId} onChange={(event) => {
               setStreamerId(event.target.value);
@@ -347,11 +381,11 @@ export default function ReviewPage() {
                 </select>
               </>
             ) : platformAccounts.length === 1 ? (
-              <div className="mb-4 rounded-md bg-slate-50 p-3 text-sm text-slate-600">
+              <div className="mb-4 rounded-2xl border border-brand/20 bg-brand/5 p-3 text-sm text-slate-300">
                 当前抖音账号：{platformAccounts[0].display_name}{platformAccounts[0].account_handle ? `（${platformAccounts[0].account_handle}）` : ""}
               </div>
             ) : (
-              <div className="mb-4 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="mb-4 rounded-2xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
                 这个主播还没有绑定抖音账号。本次复盘仍可继续，之后可在“我的-平台账号”补充。
               </div>
             )}
@@ -368,7 +402,7 @@ export default function ReviewPage() {
                 </select>
               </>
             ) : (
-              <div className="mb-4 rounded-md bg-slate-50 p-3 text-sm text-slate-600">还没有可关联的开播方案，可先直接复盘。</div>
+              <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-400">还没有可关联的开播方案，可先直接复盘。</div>
             )}
             <div className="grid gap-3 md:grid-cols-2">
               <label className="text-sm font-medium">
@@ -404,15 +438,14 @@ export default function ReviewPage() {
             </div>
             <label className="mb-2 mt-4 block text-sm font-medium">主播补充说明</label>
             <textarea className="mb-4 min-h-20 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="例如 开场有点慢，中途网络卡了一次" value={selfReview} onChange={(event) => setSelfReview(event.target.value)} />
-            <label className="mb-2 block text-sm font-medium">抖音后台截图</label>
             {previousTaskResult?.session && previousTaskResult.items.length ? (
-              <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-                <div className="text-sm font-semibold text-amber-900">上一场有 {previousTaskResult.items.length} 项行动计划，请先简单确认执行情况。</div>
-                <div className="mt-1 text-xs text-amber-800">{previousTaskResult.session.title} · 可以跳过，系统会保留未填写状态。</div>
+              <div className="mb-4 rounded-2xl border border-warning/30 bg-warning/10 p-3">
+                <div className="text-sm font-semibold text-warning">上一场有 {previousTaskResult.items.length} 项行动计划，请先简单确认执行情况。</div>
+                <div className="mt-1 text-xs text-warning/80">{previousTaskResult.session.title} · 可以跳过，系统会保留未填写状态。</div>
                 <div className="mt-3 space-y-2">
                   {previousTaskResult.items.map((task) => (
-                    <div key={task.id} className="rounded-md bg-white p-3 text-sm">
-                      <div className="font-medium">{task.action}</div>
+                    <div key={task.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+                      <div className="font-medium text-slate-100">{task.action}</div>
                       <div className="mt-2 grid gap-2 md:grid-cols-[160px_1fr]">
                         <select className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" value={task.status} onChange={(event) => updatePreviousTask(task, { status: event.target.value })}>
                           {["未完成", "已执行", "部分执行", "未执行", "不适用"].map((item) => <option key={item}>{item}</option>)}
@@ -424,30 +457,49 @@ export default function ReviewPage() {
                 </div>
               </div>
             ) : null}
-            <input className="mb-3 w-full rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-8" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => {
-              selectScreenshots(event.target.files);
-              event.currentTarget.value = "";
-            }} />
-            <p className="mb-4 text-xs text-slate-500">可一次选择多张截图，支持 PNG、JPG、WEBP、GIF，单张不超过 20MB。没有图片模型时，也可以直接进入手动录入。</p>
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div>
+                <label className="block text-sm font-medium">抖音后台截图</label>
+                <p className="mt-1 text-xs text-slate-500">支持多张截图，当前无图片模型时仍可继续手动填写。</p>
+              </div>
+              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">图片模型未配置可继续</span>
+            </div>
+            <label className="mb-3 block cursor-pointer rounded-2xl border border-dashed border-brand/35 bg-brand/5 px-4 py-8 text-center transition hover:border-brand hover:bg-brand/10">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-brand/30 bg-brand/10 text-xl text-brand">+</span>
+              <span className="mt-3 block text-sm font-semibold text-slate-100">选择或拖入抖音后台截图</span>
+              <span className="mt-1 block text-xs text-slate-500">PNG、JPG、WEBP、GIF，单张不超过 20MB。可直接跳过进入手动录入。</span>
+              <input className="sr-only" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => {
+                selectScreenshots(event.target.files);
+                event.currentTarget.value = "";
+              }} />
+            </label>
+            <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
+              正式使用时不会把模拟识别伪装成真实数据；如果没有可用图片模型，下一步会让你确认或手动补充关键指标。
+            </div>
             {screenshots.length ? (
-              <div className="mb-4 space-y-2">
+              <div className="mb-4 space-y-3">
                 {screenshots.map((item, index) => (
-                  <div key={item.id} className={`flex gap-3 rounded-md border p-2 ${item.error ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"}`}>
+                  <div key={item.id} className={`flex gap-3 rounded-2xl border p-2 ${item.error ? "border-danger/30 bg-danger/10" : "border-white/10 bg-black/20"}`}>
                     <div
                       aria-label={item.file.name}
-                      className="h-16 w-20 rounded bg-cover bg-center"
+                      className="h-16 w-20 rounded-xl bg-cover bg-center ring-1 ring-white/10"
                       role="img"
                       style={{ backgroundImage: `url(${item.previewUrl})` }}
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{index + 1}. {item.file.name}</div>
-                      <div className="mt-1 text-xs text-slate-500">{(item.file.size / 1024 / 1024).toFixed(2)}MB</div>
-                      {item.error ? <div className="mt-1 text-xs text-red-700">{item.error}</div> : null}
+                      <div className="truncate text-sm font-medium text-slate-100">{index + 1}. {item.file.name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span>{(item.file.size / 1024 / 1024).toFixed(2)}MB</span>
+                        <span className={`rounded-full px-2 py-0.5 font-semibold ${item.error ? "bg-danger/15 text-danger" : working ? "bg-brand/15 text-brand" : "bg-violet-500/15 text-violet-300"}`}>
+                          {item.error ? "格式异常" : working ? "上传中" : "待上传"}
+                        </span>
+                      </div>
+                      {item.error ? <div className="mt-1 text-xs text-danger">{item.error}</div> : null}
                     </div>
                     <div className="flex shrink-0 flex-col gap-1">
-                      <button className="rounded border border-slate-300 px-2 py-1 text-xs disabled:opacity-40" disabled={index === 0} onClick={() => moveScreenshot(item.id, -1)} type="button">上移</button>
-                      <button className="rounded border border-slate-300 px-2 py-1 text-xs disabled:opacity-40" disabled={index === screenshots.length - 1} onClick={() => moveScreenshot(item.id, 1)} type="button">下移</button>
-                      <button className="rounded border border-red-200 px-2 py-1 text-xs text-red-700" onClick={() => removeScreenshot(item.id)} type="button">删除</button>
+                      <button className="rounded-lg border border-white/10 px-2 py-1 text-xs text-slate-300 disabled:opacity-40" disabled={index === 0} onClick={() => moveScreenshot(item.id, -1)} type="button">上移</button>
+                      <button className="rounded-lg border border-white/10 px-2 py-1 text-xs text-slate-300 disabled:opacity-40" disabled={index === screenshots.length - 1} onClick={() => moveScreenshot(item.id, 1)} type="button">下移</button>
+                      <button className="rounded-lg border border-danger/30 px-2 py-1 text-xs text-danger" onClick={() => removeScreenshot(item.id)} type="button">删除</button>
                     </div>
                   </div>
                 ))}
@@ -456,22 +508,26 @@ export default function ReviewPage() {
             {working && uploadProgress > 0 ? (
               <div className="mb-4">
                 <div className="mb-1 flex justify-between text-xs text-slate-500"><span>上传进度</span><span>{uploadProgress}%</span></div>
-                <div className="h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-brand" style={{ width: `${uploadProgress}%` }} /></div>
+                <div className="h-2 rounded-full bg-white/10"><div className="brand-gradient h-2 rounded-full" style={{ width: `${uploadProgress}%` }} /></div>
               </div>
             ) : null}
             <PrimaryButton disabled={!streamerId || working} onClick={() => createSession(Boolean(screenshots.length))}>
               {working ? "正在创建复盘..." : screenshots.length ? "上传截图并识别" : "直接手动填写"}
             </PrimaryButton>
             {createdId ? (
-              <div className="mt-4 rounded-md bg-emerald-50 p-4 text-sm text-emerald-800">
+              <div className="mt-4 rounded-2xl border border-success/30 bg-success/10 p-4 text-sm text-success">
                 {createdWithScreenshots ? "截图识别完成。" : "复盘草稿已创建。"}请先确认关键数据，再生成报告。
                 <Link className="ml-2 font-bold underline" href={`/review/${createdId}/confirm`}>去确认数据</Link>
               </div>
             ) : null}
+            </div>
           </Card>
           <Card>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-bold">历史记录</h2>
+              <div>
+                <div className="text-xs font-semibold text-brand">历史直播</div>
+                <h2 className="mt-1 text-xl font-bold text-slate-50">历史记录</h2>
+              </div>
               <select className="rounded-md border border-slate-300 px-3 py-2 text-sm" value={filterStreamerId} onChange={(event) => setFilterStreamerId(event.target.value)}>
                 <option value="">全部主播</option>
                 {streamers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
@@ -512,26 +568,29 @@ export default function ReviewPage() {
             {!sessions.length ? <StatusMessage type="empty" text="还没有历史复盘。上传完成后会出现在这里。" /> : null}
             <div className="space-y-3">
               {sessions.map((item) => (
-                <div key={item.id} className="rounded-md border border-slate-200 p-3">
+                <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:border-brand/30">
                   <div>
-                    <div className="font-semibold">{item.title}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="font-semibold text-slate-50">{item.title}</div>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-slate-400">{statusText[item.status] ?? item.status}</span>
+                    </div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {item.live_date || new Date(item.created_at).toLocaleDateString("zh-CN")} · {item.status}
+                      {item.live_date || new Date(item.created_at).toLocaleDateString("zh-CN")}
                       {item.platform_account ? ` · ${item.platform_account.display_name}` : " · 未关联抖音账号"}
                     </div>
-                    <div className="mt-2 grid gap-2 text-xs text-slate-500 md:grid-cols-4">
-                      <span>时长：{item.duration_minutes ?? "未填"}</span>
-                      <span>最高在线：{item.peak_online ?? "未填"}</span>
-                      <span>平均在线：{item.average_online ?? "未填"}</span>
-                      <span>新增关注：{item.new_followers ?? "未填"}</span>
+                    <div className="mt-3 grid gap-2 text-xs text-slate-400 sm:grid-cols-2 xl:grid-cols-4">
+                      <span className="rounded-xl bg-white/5 px-3 py-2">时长：{item.duration_minutes ?? "未填"}</span>
+                      <span className="rounded-xl bg-white/5 px-3 py-2">最高在线：{item.peak_online ?? "未填"}</span>
+                      <span className="rounded-xl bg-white/5 px-3 py-2">平均在线：{item.average_online ?? "未填"}</span>
+                      <span className="rounded-xl bg-white/5 px-3 py-2">新增关注：{item.new_followers ?? "未填"}</span>
                     </div>
-                    {item.main_problem ? <div className="mt-2 text-sm text-red-700">最大问题：{item.main_problem}</div> : null}
+                    {item.main_problem ? <div className="mt-3 rounded-xl border border-coral/25 bg-coral/10 px-3 py-2 text-sm text-coral">最大问题：{item.main_problem}</div> : null}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Link className="rounded-md border border-slate-300 px-3 py-2 text-sm" href={item.status === "reported" ? `/report/${item.id}` : `/review/${item.id}/confirm`}>
+                    <Link className="rounded-xl border border-brand/25 bg-brand/10 px-3 py-2 text-sm font-semibold text-brand" href={item.status === "reported" ? `/report/${item.id}` : `/review/${item.id}/confirm`}>
                       {item.status === "reported" ? "看报告" : "继续编辑"}
                     </Link>
-                    <button className="rounded-md border border-slate-300 px-3 py-2 text-sm" onClick={() => archiveSession(item)}>
+                    <button className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300" onClick={() => archiveSession(item)}>
                       {item.status === "reported" ? "归档" : "删除草稿"}
                     </button>
                   </div>

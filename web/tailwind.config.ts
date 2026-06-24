@@ -15,7 +15,8 @@ const config: Config = {
         brand2: "#20D8D2",
         coral: "#FE2C55",
         warning: "#F59E0B",
-        success: "#22C55E"
+        success: "#22C55E",
+        danger: "#FB7185"
       },
       boxShadow: {
         glow: "0 0 0 1px rgba(37,244,238,0.14), 0 18px 50px rgba(0,0,0,0.36)",
