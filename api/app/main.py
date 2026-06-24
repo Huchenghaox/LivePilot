@@ -12,8 +12,8 @@ from app.routes import router
 from app.schema_maintenance import ensure_dev_schema
 
 settings = get_settings()
-Base.metadata.create_all(bind=engine)
 if not settings.is_production:
+    Base.metadata.create_all(bind=engine)
     ensure_dev_schema()
 
 app = FastAPI(title="LivePilot API")
