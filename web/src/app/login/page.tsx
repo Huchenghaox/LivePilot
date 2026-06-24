@@ -57,7 +57,7 @@ export default function LoginPage() {
             <Bot />
           </div>
           <div>
-            <h1 className="text-xl font-bold">AI直播运营助手</h1>
+            <h1 className="text-xl font-bold">LivePilot</h1>
             <p className="text-sm text-slate-500">第一次使用也能独立完成复盘</p>
           </div>
         </div>

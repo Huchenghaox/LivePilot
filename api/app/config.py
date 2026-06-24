@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    app_name: str = "AI直播运营助手"
+    app_name: str = "LivePilot"
     timezone: str = "Asia/Shanghai"
     database_url: str = "sqlite:///./data/live_assistant.db"
     jwt_secret: str = Field(default="dev-secret-change-me", repr=False)

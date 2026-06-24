@@ -3,8 +3,8 @@ import { AppShell } from "@/components/shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI直播运营助手",
-  description: "面向主播的 AI 复盘、开播准备和实时助理"
+  title: "LivePilot",
+  description: "An open-source AI copilot for live-stream operations, content planning, safety checks, and post-stream review."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

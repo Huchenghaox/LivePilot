@@ -12,7 +12,7 @@ Base.metadata.create_all(bind=engine)
 ensure_dev_schema()
 
 settings = get_settings()
-app = FastAPI(title="AI直播运营助手 API")
+app = FastAPI(title="LivePilot API")
 
 app.add_middleware(
     CORSMiddleware,

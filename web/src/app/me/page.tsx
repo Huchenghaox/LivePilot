@@ -79,7 +79,7 @@ export default function MePage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "ai-live-assistant-data.json";
+    link.download = "livepilot-data.json";
     link.click();
     URL.revokeObjectURL(url);
     setMessage("个人数据已导出。");

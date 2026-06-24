@@ -1,8 +1,12 @@
-# AI直播运营助手 PRD
+# LivePilot PRD
 
 ## 1. 产品定位
 
-AI直播运营助手面向普通主播和直播团队运营人员。用户上传抖音后台数据截图、直播录像或录音后，系统用 AI 输出直播复盘、问题原因、下一场动作、可直接念的话术、实时救场建议和合规提醒。
+LivePilot 面向普通主播和直播团队运营人员。用户上传抖音后台数据截图、直播录像或录音后，系统用 AI 输出直播复盘、问题原因、下一场动作、可直接念的话术、实时救场建议和合规提醒。
+
+项目定位：An open-source AI copilot for live-stream operations, content planning, safety checks, and post-stream review.
+
+目标域名：`www.haoxagent.com`
 
 产品不是数据罗盘，不复制抖音后台，而是把直播数据转化成：
 

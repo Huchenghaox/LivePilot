@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Bot size={22} />
           </div>
           <div>
-            <div className="font-bold text-ink">AI直播运营助手</div>
+            <div className="font-bold text-ink">LivePilot</div>
             <div className="text-xs text-slate-500">独立工具 · Beta</div>
           </div>
         </div>
@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-slate-500">
-          本产品为独立直播运营工具，与抖音官方无隶属或授权关系。
+          LivePilot 是独立直播运营工具，与抖音官方无隶属或授权关系。
         </div>
         <button
           className="focus-ring mt-4 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-500 hover:bg-white/[0.06] hover:text-ink"
