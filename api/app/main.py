@@ -1,17 +1,21 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.config import get_settings
-from app.database import Base, engine
+from app.database import Base, SessionLocal, engine
 from app.routes import router
 from app.schema_maintenance import ensure_dev_schema
 
-Base.metadata.create_all(bind=engine)
-ensure_dev_schema()
-
 settings = get_settings()
+Base.metadata.create_all(bind=engine)
+if not settings.is_production:
+    ensure_dev_schema()
+
 app = FastAPI(title="LivePilot API")
 
 app.add_middleware(
@@ -23,6 +27,31 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+
+@app.get("/health")
+def root_health() -> dict:
+    return {"ok": True, "name": settings.app_name}
+
+
+@app.get("/ready")
+def root_ready() -> dict:
+    checks = {"database": False, "upload_dir_writable": False}
+    with SessionLocal() as db:
+        try:
+            db.execute(text("SELECT 1"))
+            checks["database"] = True
+        except Exception:
+            checks["database"] = False
+    try:
+        probe = Path(settings.upload_dir) / ".ready-check"
+        probe.parent.mkdir(parents=True, exist_ok=True)
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        checks["upload_dir_writable"] = True
+    except OSError:
+        checks["upload_dir_writable"] = False
+    return {"ok": all(checks.values()), "name": settings.app_name, "checks": checks}
 
 
 @app.exception_handler(RequestValidationError)

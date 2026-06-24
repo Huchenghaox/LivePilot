@@ -7,10 +7,10 @@ cd web
 npm audit --json
 ```
 
-Result:
+Current result after controlled upgrades:
 
-- 2 low severity findings.
 - 2 moderate severity findings.
+- 0 low severity findings.
 - 0 high or critical findings.
 
 ## Findings
@@ -21,22 +21,25 @@ Result:
 - Direct dependency: yes, development dependency.
 - Source: `@eslint/plugin-kit` Regular Expression Denial of Service advisory.
 - Production impact: low. ESLint runs in development/CI, not in the browser application runtime.
-- Available non-breaking path: npm reports `eslint@9.39.4` as a non-major upgrade.
+- Action: upgraded to `eslint@9.39.4`.
+- Current status: resolved.
 
 ### @eslint/plugin-kit
 
 - Severity: low
 - Direct dependency: no, transitive dependency through ESLint.
 - Production impact: low. Development/CI tooling only.
-- Available non-breaking path: upgrade ESLint within v9.
+- Action: resolved by upgrading ESLint within v9.
+- Current status: resolved.
 
 ### postcss
 
 - Severity: moderate
-- Direct dependency: yes in dev dependencies, and also transitive under Next.js.
+- Direct dependency: no after direct `postcss` was upgraded; remaining vulnerable copy is transitive under Next.js.
 - Advisory: XSS via unescaped `</style>` in CSS stringify output.
 - Production impact: needs review. LivePilot does not currently stringify untrusted user CSS, but PostCSS participates in build tooling.
-- Safe upgrade path: direct `postcss` can likely be upgraded within v8, but the audit also reports a vulnerable copy under Next.js.
+- Action: upgraded direct `postcss` to `8.5.10`.
+- Current status: still reported only through `next/node_modules/postcss`.
 
 ### next
 
@@ -47,18 +50,19 @@ Result:
 
 ## Action Taken
 
-No automatic fix was applied.
+- Upgraded `eslint` from `9.17.0` to `9.39.4`.
+- Upgraded direct `postcss` from `8.4.49` to `8.5.10`.
+- Did not run `npm audit fix --force`.
 
 Reasons:
 
 - `npm audit fix --force` would make unsafe major changes.
 - The suggested Next.js version is not compatible with the current Next.js 16 app.
-- The low severity ESLint issue is development-only and can be handled in a normal dependency update.
+- Remaining issue is inside Next.js' dependency tree.
 
 ## Recommended Follow-Up
 
-1. Try a controlled ESLint v9 patch upgrade in a separate dependency PR.
-2. Monitor Next.js releases for a fix to the transitive PostCSS advisory.
-3. Consider overriding direct `postcss` to a patched v8 release only after verifying compatibility with Next.js and Tailwind.
-4. Keep `npm audit` in the release checklist, but do not force major dependency changes without regression testing.
-
+1. Monitor Next.js releases for a fix to the transitive PostCSS advisory.
+2. Avoid accepting untrusted user-authored CSS input in the product.
+3. Keep `npm audit` in the release checklist.
+4. Do not force major dependency changes without regression testing.

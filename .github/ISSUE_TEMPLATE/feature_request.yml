@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest an improvement for LivePilot
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should LivePilot do?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Product area
+      options:
+        - Onboarding
+        - Anchor profiles
+        - Platform accounts
+        - Pre-stream planning
+        - Post-stream review
+        - Reports
+        - Rules and safety
+        - Model settings
+        - Deployment
+        - Other
