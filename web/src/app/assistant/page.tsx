@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, PageTitle } from "@/components/ui";
+import { Card, PageTitle, StatusMessage } from "@/components/ui";
 
 const rescue: Record<string, string> = {
   "冷场了": "刚进来的朋友，我先用一个问题接住大家：你现在直播最卡的是没人进来，还是进来了留不住？扣 1 或 2，我按最多的先讲。",
@@ -19,6 +19,9 @@ export default function AssistantPage() {
   return (
     <>
       <PageTitle title="实时助手" desc="Beta 使用网页提词和快捷救场，平台操作全部由主播或场控手动完成。" />
+      <div className="mb-5">
+        <StatusMessage type="empty" text="实时助手属于后续阶段能力。当前可预览网页提词和快捷救场样式，但不会监听系统音频，也不会自动操作平台账号。" />
+      </div>
       <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
         <Card>
           <div className="mb-3 flex items-center justify-between">
@@ -30,13 +33,13 @@ export default function AssistantPage() {
         <div className="space-y-5">
           <Card>
             <h2 className="mb-3 text-lg font-bold">AI 当前建议</h2>
-            <div className="rounded-md bg-emerald-50 p-4 text-emerald-800">{suggestion}</div>
+            <div className="rounded-2xl border border-brand/25 bg-brand/10 p-4 text-brand">{suggestion}</div>
           </Card>
           <Card>
             <h2 className="mb-3 text-lg font-bold">快捷救场</h2>
             <div className="grid grid-cols-2 gap-2">
               {Object.keys(rescue).map((item) => (
-                <button key={item} className="rounded-md border border-slate-300 p-3 text-sm font-semibold hover:bg-slate-50" onClick={() => setSuggestion(rescue[item])}>
+                <button key={item} className="rounded-xl border border-white/10 bg-white/[0.045] p-3 text-sm font-semibold text-slate-100 hover:border-brand/50" onClick={() => setSuggestion(rescue[item])}>
                   {item}
                 </button>
               ))}

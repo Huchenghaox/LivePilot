@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, PageTitle, SecondaryButton } from "@/components/ui";
+import { Card, PageTitle, PrimaryButton, SecondaryButton } from "@/components/ui";
 
 export default function ErrorPage({ reset }: { reset: () => void }) {
   return (
@@ -9,7 +9,7 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
       <Card>
         <p className="text-sm text-slate-600">如果正在生成报告，任务通常会继续保留。重试后仍失败，可以回到直播复盘页面查看状态。</p>
         <div className="mt-5 flex flex-wrap gap-2">
-          <button className="rounded-md bg-brand px-4 py-2.5 text-sm font-semibold text-white" onClick={reset}>重试</button>
+          <PrimaryButton onClick={reset}>重试</PrimaryButton>
           <SecondaryButton onClick={() => { window.location.href = "/review"; }}>查看直播复盘</SecondaryButton>
         </div>
       </Card>
