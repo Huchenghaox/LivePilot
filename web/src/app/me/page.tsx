@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Card, PageTitle, PrimaryButton, SecondaryButton, StatusMessage } from "@/components/ui";
 import { apiFetch, clearAuth } from "@/lib/api";
 
-type Me = { id: number; name: string; phone: string; deletion_requested_at?: string };
+type Me = { id: number; username: string; name: string; nickname: string; phone: string; phone_verified: boolean; deletion_requested_at?: string };
 type FeedbackItem = {
   id: number;
   streamer_id?: number | null;
@@ -28,6 +28,7 @@ export default function MePage() {
   const [feedbackContent, setFeedbackContent] = useState("");
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [deletionReason, setDeletionReason] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -64,13 +65,23 @@ export default function MePage() {
 
   async function changePassword() {
     setError("");
+    if (newPassword !== confirmNewPassword) {
+      setError("两次输入的新密码不一致。");
+      return;
+    }
+    if (!window.confirm("修改密码后，其他已登录设备需要重新登录。确定继续吗？")) return;
     const result = await apiFetch<{ message: string }>("/api/account/change-password", {
       method: "POST",
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
     });
     setOldPassword("");
     setNewPassword("");
+    setConfirmNewPassword("");
     setMessage(result.message);
+    clearAuth();
+    window.setTimeout(() => {
+      window.location.href = "/login";
+    }, 1200);
   }
 
   async function exportData() {
@@ -176,8 +187,9 @@ export default function MePage() {
         <Card>
           <h2 className="mb-3 text-lg font-bold">账户信息</h2>
           <div className="space-y-2 text-sm text-slate-600">
-            <div>昵称：{me?.name || "未读取"}</div>
-            <div>手机号：{me?.phone || "未读取"}</div>
+            <div>用户名：{me?.username || "未设置"}</div>
+            <div>昵称：{me?.nickname || me?.name || "未读取"}</div>
+            <div>绑定手机号：{me?.phone || "未读取"} {me?.phone_verified ? "· 已验证" : "· 未验证"}</div>
             {me?.deletion_requested_at ? <div className="text-amber-700">已提交注销申请：{new Date(me.deletion_requested_at).toLocaleString("zh-CN")}</div> : null}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -190,7 +202,9 @@ export default function MePage() {
           <h2 className="mb-3 text-lg font-bold">修改密码</h2>
           <input className="mb-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" type="password" placeholder="原密码" value={oldPassword} onChange={(event) => setOldPassword(event.target.value)} />
           <input className="mb-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" type="password" placeholder="新密码，至少6位" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-          <PrimaryButton disabled={!oldPassword || !newPassword} onClick={changePassword}>保存新密码</PrimaryButton>
+          <input className="mb-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" type="password" placeholder="再次输入新密码" value={confirmNewPassword} onChange={(event) => setConfirmNewPassword(event.target.value)} />
+          <PrimaryButton disabled={!oldPassword || !newPassword || !confirmNewPassword} onClick={changePassword}>保存新密码</PrimaryButton>
+          <p className="mt-2 text-xs leading-5 text-slate-500">修改成功后会退出当前登录，旧登录状态会失效。</p>
         </Card>
 
         <Card>

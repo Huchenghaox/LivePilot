@@ -32,11 +32,13 @@ export function SecondaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElem
   );
 }
 
-export function StatusMessage({ type, text, onRetry }: { type: "empty" | "loading" | "error" | "success"; text: string; onRetry?: () => void }) {
+export function StatusMessage({ type, text, onRetry }: { type: "empty" | "loading" | "error" | "success" | "warning"; text: string; onRetry?: () => void }) {
   const color = type === "error"
     ? "border-red-400/25 bg-red-500/10 text-red-200"
     : type === "success"
       ? "border-brand/25 bg-brand/10 text-brand"
+      : type === "warning"
+        ? "border-amber-400/25 bg-amber-500/10 text-amber-200"
       : type === "loading"
         ? "border-brand/20 bg-brand/10 text-brand"
         : "border-white/10 bg-white/[0.045] text-slate-400";
