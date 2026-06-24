@@ -8,8 +8,14 @@ import { Card, PageTitle, StatusMessage } from "@/components/ui";
 
 type Dashboard = {
   streamer_count: number;
+  platform_account_count: number;
+  prepare_plan_count: number;
   session_count: number;
   rule_reminder: string;
+  model_status?: {
+    text_model_configured: boolean;
+    image_model_configured: boolean;
+  };
   latest_session: null | {
     id: number;
     title: string;
@@ -130,6 +136,29 @@ export default function HomePage() {
           <Link className="ml-2 font-semibold underline underline-offset-2" href="/rules">查看规则与提示</Link>
         </div>
       ) : null}
+      {!loading && !error && data ? (
+        <Card className="mb-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold text-brand">首次使用引导</div>
+              <h2 className="mt-1 text-xl font-bold text-slate-50">按这 5 步把 LivePilot 用起来</h2>
+            </div>
+            <Link className="rounded-xl border border-white/10 bg-white/[0.055] px-3 py-2 text-sm font-semibold text-slate-100" href="/me">查看使用帮助</Link>
+          </div>
+          <div className="grid gap-3 md:grid-cols-5">
+            <OnboardingStep done={data.streamer_count > 0} title="创建主播" text="让 AI 知道你的直播定位" href="/streamers" />
+            <OnboardingStep done={data.platform_account_count > 0} title="记录账号" text="可选，不影响手动复盘" href="/platform-accounts" />
+            <OnboardingStep done={Boolean(data.model_status?.text_model_configured)} title="配置文字AI" text="用于生成真实报告" href="/model-settings" />
+            <OnboardingStep done={data.prepare_plan_count > 0} title="开播准备" text="先生成下一场方案" href="/prepare" />
+            <OnboardingStep done={data.session_count > 0} title="完成复盘" text="录入数据生成报告" href="/review" />
+          </div>
+          {!data.model_status?.image_model_configured ? (
+            <div className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+              当前图片识别模型未配置，不会影响手动录入复盘。上传截图后如无法识别，可继续确认和填写关键数据。
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
       {!loading && !error && data?.streamer_count === 0 ? (
         <Card>
           <div className="text-sm text-slate-500">第一次使用</div>
@@ -242,6 +271,18 @@ export default function HomePage() {
         </Card>
       </div> : null}
     </>
+  );
+}
+
+function OnboardingStep({ done, title, text, href }: { done: boolean; title: string; text: string; href: string }) {
+  return (
+    <Link className={`rounded-2xl border p-3 transition ${done ? "border-success/30 bg-success/10" : "border-white/10 bg-white/[0.045] hover:border-brand/40"}`} href={href}>
+      <div className={`mb-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${done ? "bg-success/15 text-success" : "bg-brand/10 text-brand"}`}>
+        {done ? "已完成" : "去完成"}
+      </div>
+      <div className="font-bold text-slate-50">{title}</div>
+      <div className="mt-1 text-xs leading-5 text-slate-500">{text}</div>
+    </Link>
   );
 }
 

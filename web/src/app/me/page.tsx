@@ -196,6 +196,10 @@ export default function MePage() {
         <Card>
           <h2 className="mb-3 text-lg font-bold">数据与隐私</h2>
           <p className="mb-3 text-sm leading-6 text-slate-500">截图和复盘数据只用于当前账号的分析。Beta 阶段注销账号先记录申请，由管理员处理。</p>
+          <div className="mb-3 flex flex-wrap gap-2 text-sm">
+            <Link className="font-semibold text-brand" href="/terms">查看服务条款</Link>
+            <Link className="font-semibold text-brand" href="/privacy">查看隐私说明</Link>
+          </div>
           <textarea className="mb-3 min-h-20 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="注销原因，可不填" value={deletionReason} onChange={(event) => setDeletionReason(event.target.value)} />
           <SecondaryButton onClick={requestDeletion}>申请注销账号</SecondaryButton>
         </Card>

@@ -3352,6 +3352,22 @@ def dashboard(
     streamer_count = (
         db.scalar(select(func.count()).select_from(Streamer).where(Streamer.user_id == user.id, Streamer.is_archived.is_(False))) or 0
     )
+    platform_account_count = (
+        db.scalar(
+            select(func.count())
+            .select_from(UserPlatformAccount)
+            .join(PlatformAccount, PlatformAccount.id == UserPlatformAccount.platform_account_id)
+            .where(
+                UserPlatformAccount.user_id == user.id,
+                UserPlatformAccount.status == "active",
+                PlatformAccount.archived_at.is_(None),
+            )
+        )
+        or 0
+    )
+    prepare_plan_count = db.scalar(select(func.count()).select_from(PreparationPlan).where(PreparationPlan.user_id == user.id)) or 0
+    text_model_configured = bool(select_model_setting(user, "文字分析", db))
+    image_model_configured = bool(select_model_setting(user, "图片识别", db))
     session_query = select(LiveSession).where(LiveSession.user_id == user.id, LiveSession.is_archived.is_(False))
     if streamer_id:
         session_query = session_query.where(LiveSession.streamer_id == streamer_id)
@@ -3379,6 +3395,12 @@ def dashboard(
     )
     return {
         "streamer_count": streamer_count,
+        "platform_account_count": platform_account_count,
+        "prepare_plan_count": prepare_plan_count,
+        "model_status": {
+            "text_model_configured": text_model_configured,
+            "image_model_configured": image_model_configured,
+        },
         "session_count": session_count,
         "latest_session": {
             "id": session.id,
