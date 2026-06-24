@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    app_env: str = "development"
     app_name: str = "LivePilot"
     timezone: str = "Asia/Shanghai"
     database_url: str = "sqlite:///./data/live_assistant.db"
@@ -32,6 +33,10 @@ class Settings(BaseSettings):
     douyin_platform_status: str = "未配置"
 
     @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() in {"production", "prod"}
+
+    @property
     def allowed_cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
@@ -47,6 +52,12 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     settings = Settings()
+    if settings.is_production and settings.jwt_secret == "dev-secret-change-me":
+        raise RuntimeError("生产环境必须设置安全的 JWT_SECRET，不能使用默认开发密钥。")
+    if settings.is_production and len(settings.jwt_secret) < 32:
+        raise RuntimeError("生产环境 JWT_SECRET 长度至少需要 32 个字符。")
+    if settings.is_production and not settings.allowed_cors_origins:
+        raise RuntimeError("生产环境必须显式配置 CORS_ORIGINS。")
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     Path("./data").mkdir(parents=True, exist_ok=True)
     return settings

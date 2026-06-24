@@ -6,7 +6,7 @@ from secrets import token_urlsafe
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.ai_gateway import (
@@ -107,6 +107,30 @@ def health() -> dict:
     return {"ok": True, "name": get_settings().app_name}
 
 
+@router.get("/ready")
+def ready(db: Session = Depends(get_db)) -> dict:
+    settings = get_settings()
+    checks = {
+        "database": False,
+        "upload_dir_writable": False,
+    }
+    try:
+        db.execute(text("SELECT 1"))
+        checks["database"] = True
+    except Exception:
+        checks["database"] = False
+    try:
+        upload_dir = Path(settings.upload_dir)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        probe = upload_dir / ".ready-check"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        checks["upload_dir_writable"] = True
+    except OSError:
+        checks["upload_dir_writable"] = False
+    return {"ok": all(checks.values()), "name": settings.app_name, "checks": checks}
+
+
 @router.post("/auth/register")
 def register(payload: AuthRegister, db: Session = Depends(get_db)) -> dict:
     if payload.invite_code != get_settings().invite_code:
@@ -126,6 +150,8 @@ def login(payload: AuthLogin, db: Session = Depends(get_db)) -> dict:
     user = db.scalar(select(User).where(User.phone == payload.phone))
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=400, detail="手机号或密码不正确")
+    if user.is_deleted:
+        raise HTTPException(status_code=403, detail="账号已停用，请联系管理员处理。")
     return {"access_token": create_token(user), "token_type": "bearer", "user": {"id": user.id, "name": user.name}}
 
 
@@ -746,6 +772,10 @@ def list_platform_accounts(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    if anchor_id:
+        anchor = db.get(Streamer, anchor_id)
+        if not anchor or anchor.user_id != user.id:
+            raise HTTPException(status_code=404, detail="主播不存在")
     links = db.scalars(
         select(UserPlatformAccount).where(UserPlatformAccount.user_id == user.id, UserPlatformAccount.status == "active")
     ).all()
@@ -772,14 +802,7 @@ def create_platform_account(payload: PlatformAccountCreate, user: User = Depends
     if duplicate:
         existing_link = user_platform_link(db, user.id, duplicate.id)
         if not existing_link:
-            db.add(
-                UserPlatformAccount(
-                    user_id=user.id,
-                    platform_account_id=duplicate.id,
-                    role="operator",
-                    permission_scope="review,report,rule",
-                )
-            )
+            raise HTTPException(status_code=409, detail="这个平台账号已被其他用户记录。请让账号负责人邀请你，或后续通过官方授权完成合并。")
         set_anchor_account_binding(db, duplicate, payload.anchor_id, True, user.id)
         db.commit()
         return serialize_platform_account(duplicate, db, user, include_detail=True)

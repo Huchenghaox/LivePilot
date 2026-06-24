@@ -41,7 +41,11 @@ from app.routes import (
     latest_streamer_growth_tasks,
     list_anchor_platform_accounts,
     list_live_sessions,
+    list_platform_accounts,
     list_screenshots,
+    login,
+    ready,
+    register,
     remove_platform_member,
     reorder_screenshots,
     request_account_deletion,
@@ -57,6 +61,8 @@ from app.routes import (
 )
 from app.schemas import (
     AccountDeletionRequest,
+    AuthLogin,
+    AuthRegister,
     FeedbackCreate,
     GrowthTaskUpdate,
     LiveSessionCreate,
@@ -86,6 +92,51 @@ def image_upload(filename: str, content_type: str = "image/png") -> UploadFile:
         filename=filename,
         headers=Headers({"content-type": content_type}),
     )
+
+
+def test_register_login_and_deleted_user_boundaries():
+    db = make_db()
+
+    registered = register(
+        AuthRegister(phone="13800000000", name="真实主播", password="secret123", invite_code=get_settings().invite_code),
+        db,
+    )
+    assert registered["access_token"]
+    assert registered["user"]["name"] == "真实主播"
+
+    try:
+        register(AuthRegister(phone="13800000000", name="重复账号", password="secret123", invite_code=get_settings().invite_code), db)
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 400
+    else:
+        raise AssertionError("重复手机号不应注册成功")
+
+    try:
+        login(AuthLogin(phone="13800000000", password="wrong-password"), db)
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 400
+    else:
+        raise AssertionError("错误密码不应登录成功")
+
+    user = db.scalar(select(User).where(User.phone == "13800000000"))
+    user.is_deleted = True
+    db.commit()
+    try:
+        login(AuthLogin(phone="13800000000", password="secret123"), db)
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 403
+    else:
+        raise AssertionError("已停用账号不应登录成功")
+
+
+def test_ready_reports_database_and_upload_directory():
+    db = make_db()
+
+    result = ready(db)
+
+    assert result["ok"] is True
+    assert result["checks"]["database"] is True
+    assert result["checks"]["upload_dir_writable"] is True
 
 
 def test_streamer_with_sessions_is_archived_not_deleted():
@@ -464,6 +515,49 @@ def test_non_member_cannot_read_platform_account():
         assert getattr(exc, "status_code", None) == 403
     else:
         raise AssertionError("非成员不应查看平台账号")
+
+
+def test_duplicate_manual_account_does_not_auto_add_unrelated_user():
+    db = make_db()
+    owner = User(id=1, phone="13800000000", name="负责人", password_hash="x")
+    stranger = User(id=2, phone="13900000000", name="陌生人", password_hash="x")
+    db.add_all([owner, stranger])
+    db.commit()
+    account = create_platform_account(PlatformAccountCreate(display_name="小雅号", account_handle="same-handle"), owner, db)
+
+    try:
+        create_platform_account(PlatformAccountCreate(display_name="陌生记录", account_handle="same-handle"), stranger, db)
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 409
+    else:
+        raise AssertionError("陌生用户不能凭相同抖音号自动加入已有平台账号")
+
+    try:
+        get_platform_account(account["id"], stranger, db)
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 403
+    else:
+        raise AssertionError("重复记录失败后不应获得账号读取权限")
+
+
+def test_platform_account_anchor_filter_rejects_foreign_anchor():
+    db = make_db()
+    owner = User(id=1, phone="13800000000", name="负责人", password_hash="x")
+    stranger = User(id=2, phone="13900000000", name="陌生人", password_hash="x")
+    own_anchor = Streamer(id=1, user_id=1, name="我的主播", direction="内容分享", live_forms="[]")
+    foreign_anchor = Streamer(id=2, user_id=2, name="别人的主播", direction="情感陪伴", live_forms="[]")
+    db.add_all([owner, stranger, own_anchor, foreign_anchor])
+    db.commit()
+    create_platform_account(PlatformAccountCreate(display_name="主号", account_handle="owner-main", anchor_id=1), owner, db)
+
+    result = list_platform_accounts(anchor_id=1, user=owner, db=db)
+    assert len(result["items"]) == 1
+    try:
+        list_platform_accounts(anchor_id=2, user=owner, db=db)
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 404
+    else:
+        raise AssertionError("不能用其他用户的主播筛选平台账号")
 
 
 def test_manual_account_deduplicates_by_handle_and_can_create_session_with_account():
