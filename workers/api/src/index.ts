@@ -36,10 +36,10 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/auth/sms/send") return await sendSmsCode(request, env);
       if (request.method === "POST" && url.pathname === "/api/auth/sms/verify") return await verifySmsOnly(request, env);
       if (request.method === "POST" && url.pathname === "/api/auth/register") return await register(request, env);
-      if (request.method === "POST" && url.pathname === "/api/auth/login") return await login(request, env);
+      if (request.method === "POST" && ["/api/auth/login", "/api/login"].includes(url.pathname)) return await login(request, env);
       if (request.method === "POST" && url.pathname === "/api/auth/password-reset/start") return await startPasswordReset(request, env);
       if (request.method === "POST" && url.pathname === "/api/auth/password-reset/confirm") return await confirmPasswordReset(request, env);
-      if (request.method === "GET" && url.pathname === "/api/me") return ok({ user: publicUser(await requireUser(request, env)) });
+      if (request.method === "GET" && ["/api/me", "/api/auth/me"].includes(url.pathname)) return ok({ user: publicUser(await requireUser(request, env)) });
       if (request.method === "POST" && url.pathname === "/api/account/change-password") return await changePassword(request, env);
       if (url.pathname.startsWith("/api/admin/")) return await adminRouter(request, env, url);
       if (request.method === "GET" && url.pathname === "/api/streamers") return await listStreamers(request, env, url);
@@ -1849,5 +1849,22 @@ function base64urlJson(value: unknown): string { return base64url(new TextEncode
 function timingSafeEqual(a: string, b: string): boolean { if (a.length !== b.length) return false; let out = 0; for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i); return out === 0; }
 function ok(payload: unknown): Response { return cors(new Response(JSON.stringify(payload), { status: 200, headers: jsonHeaders })); }
 function fail(status: number, message: string): Response { return cors(new Response(JSON.stringify({ detail: message }), { status, headers: jsonHeaders })); }
-function cors(response: Response): Response { const headers = new Headers(response.headers); headers.set("access-control-allow-origin", "*"); headers.set("access-control-allow-methods", "GET,POST,PATCH,DELETE,OPTIONS"); headers.set("access-control-allow-headers", "authorization,content-type,x-livepilot-filename"); return new Response(response.body, { status: response.status, statusText: response.statusText, headers }); }
+function cors(response: Response, request?: Request): Response {
+  const headers = new Headers(response.headers);
+  const origin = request?.headers.get("origin") || "";
+  const allowed = new Set([
+    "https://livepilot-web.huchenghaox.workers.dev",
+    "https://haoxagent.com",
+    "https://www.haoxagent.com",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001"
+  ]);
+  headers.set("access-control-allow-origin", origin && allowed.has(origin) ? origin : "*");
+  headers.set("vary", "Origin");
+  headers.set("access-control-allow-methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  headers.set("access-control-allow-headers", "authorization,content-type,x-livepilot-filename");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
 class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }

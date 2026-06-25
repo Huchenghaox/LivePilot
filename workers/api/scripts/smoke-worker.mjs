@@ -86,9 +86,17 @@ async function main() {
   assert(login.access_token, "login should return token");
   let token = login.access_token;
 
+  const compatLogin = await request("/api/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
+  assert(compatLogin.access_token, "compat /api/login should return token");
+
   const me = await request("/api/me", { headers: auth(token) });
   assert(me.user?.username === username, "me should return current user");
   assert(me.user?.role === "user", "new registered users should be normal users");
+  const authMe = await request("/api/auth/me", { headers: auth(token) });
+  assert(authMe.user?.username === username, "compat /api/auth/me should return current user");
 
   const ordinaryAdminDenied = await requestStatus("/api/admin/dashboard", { headers: auth(token) });
   assert(ordinaryAdminDenied.status === 403, "normal user should not access admin dashboard");

@@ -1,4 +1,4 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://livepilot-api.huchenghaox.workers.dev").replace(/\/$/, "");
 
 export type ApiError = { detail?: string | { msg?: string }[] };
 
@@ -15,7 +15,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    response = await fetch(apiUrl(path), { ...options, headers });
   } catch {
     throw new Error("暂时无法连接服务，请确认后台服务已经启动后重试。");
   }
@@ -61,7 +61,7 @@ export function uploadWithProgress<T>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE}${path}`);
+    xhr.open("POST", apiUrl(path));
     const token = getToken();
     if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
@@ -106,4 +106,9 @@ function safeParseResponse(text: string) {
   } catch {
     return {};
   }
+}
+
+function apiUrl(path: string) {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE}${cleanPath}`.replace(/([^:]\/)\/+/g, "$1");
 }

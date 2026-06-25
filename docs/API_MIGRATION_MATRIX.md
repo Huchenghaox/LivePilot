@@ -204,6 +204,21 @@ The checked-in Wrangler config already contains the D1 and R2 bindings supplied 
 Cloudflare dashboard still needs secrets for production behavior:
 
 - `JWT_SECRET`
+- `MODEL_ENCRYPTION_KEY`
+- `INITIAL_ADMIN_USERNAME`
 - Future real SMS provider secrets
 
 If the Worker is created from GitHub with this directory as root, Cloudflare should not need manual D1/R2 binding entry unless the dashboard project ignores `workers/api/wrangler.jsonc`.
+
+## Initial Admin
+
+Create or repair the first administrator with the Worker-side password hash format:
+
+```bash
+cd workers/api
+ADMIN_USERNAME=huchenghao ADMIN_PASSWORD='replace-with-real-password' ADMIN_NICKNAME='负责人' npm run seed:admin
+```
+
+For local D1 testing, add `ADMIN_LOCAL=true`.
+
+The script does not print `password_hash`, does not store the plaintext password, and updates an existing user to `role='admin'`, `status='active'`, and `token_version=token_version+1`.
