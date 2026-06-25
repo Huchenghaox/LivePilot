@@ -1,26 +1,27 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "livepilot-api",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-06-25",
-  "workers_dev": true,
-  "vars": {
-    "APP_ENV": "production",
-    "REGISTRATION_MODE": "closed",
-    "SMS_ENABLED": "false",
-    "SMS_PROVIDER": "disabled"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "livepilot-production",
-      "database_id": "1d503efc-6f49-460c-acf7-ac5801f1e813"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "UPLOADS",
-      "bucket_name": "livepilot-uploads"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "livepilot-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-06-25",
+	"workers_dev": true,
+	"vars": {
+		"APP_ENV": "production",
+		"REGISTRATION_MODE": "closed",
+		"SMS_ENABLED": "false",
+		"SMS_PROVIDER": "disabled",
+		"INITIAL_ADMIN_USERNAME": "huchenghao"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "livepilot-production",
+			"database_id": "1d503efc-6f49-460c-acf7-ac5801f1e813"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "UPLOADS",
+			"bucket_name": "livepilot-uploads"
+		}
+	]
 }
