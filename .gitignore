@@ -18,6 +18,8 @@ storage/
 # Dependencies and build output
 node_modules/
 .next/
+.open-next/
+.wrangler/
 dist/
 build/
 .wrangler/
