@@ -125,6 +125,101 @@ async function main() {
   assert(dashboard.stats?.streamer_count >= 1, "dashboard should include streamer count");
   assert(dashboard.stats?.platform_account_count >= 1, "dashboard should include platform account count");
 
+  const plan = await request("/api/prepare-plans", {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify({
+      streamer_id: streamer.id,
+      platform_account_id: account.id,
+      topic: "新主播如何提高直播停留",
+      duration_minutes: 90,
+      goal: "留得更久",
+      live_form: "评论互动",
+      special_notes: "下一场重点验证前3分钟互动"
+    })
+  });
+  assert(plan.id && plan.plan?.opening_3_minutes, "preparation plan should be generated and saved");
+
+  const session = await request("/api/live-sessions", {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify({
+      streamer_id: streamer.id,
+      platform_account_id: account.id,
+      preparation_plan_id: plan.id,
+      platform: "douyin",
+      data_source: "screenshot_ai",
+      title: "Worker烟测直播复盘"
+    })
+  });
+  assert(session.id, "live session should be created");
+
+  await request(`/api/live-sessions/${session.id}/metrics`, {
+    method: "PUT",
+    headers: auth(token),
+    body: JSON.stringify({
+      live_date: "2026-06-25",
+      session_topic: "新主播如何提高直播停留",
+      main_goal: "留得更久",
+      self_review: "感觉前半段互动偏少",
+      duration_minutes: "90",
+      room_entries: "5,143",
+      average_online: "32",
+      peak_online: "126"
+    })
+  });
+
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+  const form = new FormData();
+  form.append("files", new Blob([png], { type: "image/png" }), "douyin-live-summary.png");
+  const screenshotResponse = await fetch(`${baseUrl}/api/live-sessions/${session.id}/screenshots`, {
+    method: "POST",
+    headers: auth(token),
+    body: form
+  });
+  const screenshotBody = await screenshotResponse.json();
+  assert(screenshotResponse.ok && screenshotBody.items?.length === 1, "review screenshot upload should succeed");
+
+  const screenshots = await request(`/api/live-sessions/${session.id}/screenshots`, { headers: auth(token) });
+  assert(screenshots.items?.[0]?.recognition_status !== "failed", "screenshot should be recognized or awaiting confirmation");
+
+  const metricsBeforeConfirm = await request(`/api/live-sessions/${session.id}/metrics`, { headers: auth(token) });
+  assert(metricsBeforeConfirm.items?.some((item) => item.key === "average_watch_seconds"), "recognized metrics should be saved as draft");
+  await request(`/api/live-sessions/${session.id}/recognized-fields`, {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify({
+      items: [
+        { key: "average_watch_seconds", label: "人均停留时长", category: "retention", raw_value: "2.5分钟", normalized_value: 150, unit: "秒", source_type: "screenshot_manual_confirmed", confidence: "manual" }
+      ]
+    })
+  });
+
+  const report = await request(`/api/live-sessions/${session.id}/report`, {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify({ mode: "comprehensive" })
+  });
+  assert(report.one_sentence && report.next_actions?.length > 0, "diagnostic report should include conclusion and actions");
+  assert(report.structured_actions?.[0]?.timing && report.structured_actions?.[0]?.target_metric, "action should include timing and target metric");
+  assert(report.experiments?.length > 0, "report should create experiments");
+
+  const reportRead = await request(`/api/live-sessions/${session.id}/report`, { headers: auth(token) });
+  assert(reportRead.funnel?.retention, "saved report should include funnel diagnosis");
+
+  const nextPlan = await request("/api/prepare-plans/from-report", {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify({ report_id: report.id })
+  });
+  assert(nextPlan.id && nextPlan.source_report_id === report.id, "next preparation plan should link source report");
+
+  await request("/api/feedback", {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify({ live_session_id: session.id, report_id: report.id, feedback_type: "报告有帮助", content: "烟测反馈" })
+  });
+
   const upload = await fetch(`${baseUrl}/api/uploads`, {
     method: "POST",
     headers: auth(token, {

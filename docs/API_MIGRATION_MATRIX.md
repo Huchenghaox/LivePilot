@@ -85,12 +85,57 @@ Current migrations:
 
 - `0001_initial.sql`: initial worker users, worker sessions, private uploaded assets
 - `0002_accounts_streamers_platforms.sql`: account auth, SMS verification, invitations, rate limits, streamers, platform accounts, dashboard support tables
+- `0003_live_growth_mvp.sql`: preparation plans, reviews, screenshot uploads, recognition results, confirmed metrics, reports, diagnoses, action items, experiments, feedback, rules, and rule snapshots
 
 Validated locally:
 
 - Empty local D1 can apply migrations.
 - Re-running migrations is safe through Wrangler migration history.
 - Worker can read and write users, SMS rows, invitations, streamers, platform accounts, binding rows, and uploaded asset rows.
+- Worker can run the MVP growth loop locally: preparation plan, review, private screenshot upload, visual recognition draft, metric confirmation, diagnostic report, action items, experiments, next preparation plan, and feedback.
+
+## MVP Growth APIs Added In Stage 2
+
+| Area | Endpoint | Worker status | Compatibility note |
+| --- | --- | --- | --- |
+| Preparation | `GET /api/prepare-plans` | Migrated | Current-user scoped; filter by streamer/platform account |
+| Preparation | `POST /api/prepare-plans` | Migrated | Uses system text model or local dev mock provider |
+| Preparation | `PATCH /api/prepare-plans/:id` | Migrated | Owner-only |
+| Preparation | `POST /api/prepare-plans/:id/mark-used` | Migrated | Marks a plan as used |
+| Preparation | `POST /api/prepare-plans/from-report` | Migrated | Creates a new plan linked to source report/review |
+| Review | `GET /api/live-sessions` | Migrated | Current-user scoped |
+| Review | `POST /api/live-sessions` | Migrated | Creates review draft |
+| Review | `DELETE /api/live-sessions/:id` | Migrated | Archives review |
+| Metrics | `GET /api/live-sessions/:id/metrics` | Migrated | Returns confirmed and draft metric items |
+| Metrics | `PUT/POST /api/live-sessions/:id/metrics` | Migrated | Saves manual confirmed metrics |
+| Screenshots | `POST /api/live-sessions/:id/screenshots` | Migrated | Private R2 upload; PNG/JPEG/WebP magic-byte validation |
+| Screenshots | `GET /api/live-sessions/:id/screenshots` | Migrated | Owner-only screenshot metadata |
+| Recognition | `POST /api/live-sessions/:id/recognize` | Migrated | Re-runs recognition for uploaded screenshots |
+| Recognition | `POST /api/live-sessions/:id/recognized-fields` | Migrated | Confirms or overrides recognized metrics |
+| Reports | `POST /api/live-sessions/:id/report` | Migrated | Generates structured funnel diagnosis, actions, experiments |
+| Reports | `GET /api/live-sessions/:id/report` | Migrated | Returns latest report |
+| Reports | `GET /api/live-sessions/:id/report-versions` | Migrated | Lists report versions |
+| Reports | `GET /api/live-sessions/:id/report-versions/:report_id` | Migrated | Owner-only report version |
+| Actions | `GET /api/growth-tasks` | Migrated | Lists report action items |
+| Actions | `PATCH /api/growth-tasks/:id` | Migrated | Updates execution status/remark |
+| Actions | `GET /api/streamers/:id/latest-growth-tasks` | Migrated | Supports next-review execution tracking |
+| Feedback | `POST /api/feedback` | Migrated | Stores user feedback linked to report/session |
+| Feedback | `GET /api/feedback` | Migrated | Current-user scoped |
+| Rules | `GET /api/rules` | Migrated | Lists active system/user rules for MVP |
+
+## Model Boundary
+
+The Worker uses system-level model configuration only:
+
+- `MODEL_API_KEY`
+- `MODEL_BASE_URL`
+- `MODEL_TEXT_NAME`
+- `MODEL_VISION_NAME`
+- `MODEL_TIMEOUT_MS`
+
+These are Cloudflare secrets or environment bindings. They are not stored in D1, not returned to the frontend, and not committed to Git.
+
+Local development can use `MODEL_PROVIDER=mock` in untracked `.dev.vars`. This is only for automated local smoke tests. Production does not return mock recognition or mock reports.
 
 ## SMS Boundary
 
