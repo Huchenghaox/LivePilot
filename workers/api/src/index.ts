@@ -13,10 +13,14 @@ type Env = {
   MODEL_VISION_NAME?: string;
   MODEL_TIMEOUT_MS?: string;
   MODEL_PROVIDER?: string;
+  MODEL_ENCRYPTION_KEY?: string;
+  INITIAL_ADMIN_USERNAME?: string;
+  INITIAL_ADMIN_EMAIL?: string;
 };
 
-type AuthUser = { id: number; username: string; nickname: string; token_version?: number; status?: string };
+type AuthUser = { id: number; username: string; nickname: string; token_version?: number; status?: string; role?: string };
 type UserRow = AuthUser & { phone_normalized?: string; phone_verified_at?: string; password_hash?: string; deleted_at?: string };
+type ModelRuntimeConfig = { provider: string; baseUrl: string; apiKey: string; textModel: string; visionModel: string; timeoutMs: number; source: "admin" | "secret" | "mock" | "none" };
 
 const jsonHeaders = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 const reservedUsernames = new Set(["admin", "administrator", "root", "system", "support", "livepilot", "api", "null", "undefined"]);
@@ -37,6 +41,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/auth/password-reset/confirm") return await confirmPasswordReset(request, env);
       if (request.method === "GET" && url.pathname === "/api/me") return ok({ user: publicUser(await requireUser(request, env)) });
       if (request.method === "POST" && url.pathname === "/api/account/change-password") return await changePassword(request, env);
+      if (url.pathname.startsWith("/api/admin/")) return await adminRouter(request, env, url);
       if (request.method === "GET" && url.pathname === "/api/streamers") return await listStreamers(request, env, url);
       if (request.method === "POST" && url.pathname === "/api/streamers") return await createStreamer(request, env);
       if (request.method === "GET" && /^\/api\/streamers\/\d+$/.test(url.pathname)) return await getStreamer(request, env, idFromPath(url.pathname, "主播不存在"));
@@ -207,6 +212,168 @@ async function changePassword(request: Request, env: Env): Promise<Response> {
   if (!body.new_password || body.new_password.length < 6 || await verifyPassword(body.new_password, row.password_hash)) throw new HttpError(400, "新密码不符合要求或与旧密码相同");
   await env.DB.prepare("UPDATE users SET password_hash=?1, token_version=token_version+1, updated_at=CURRENT_TIMESTAMP WHERE id=?2").bind(await hashPassword(body.new_password), user.id).run();
   return ok({ ok: true, message: "密码已修改，请重新登录。" });
+}
+
+async function adminRouter(request: Request, env: Env, url: URL): Promise<Response> {
+  const admin = await requireAdmin(request, env);
+  if (request.method === "GET" && url.pathname === "/api/admin/dashboard") return await adminDashboard(env);
+  if (request.method === "GET" && url.pathname === "/api/admin/models") return ok({ items: (await listModelConfigs(env)).map(maskModelConfig), active: maskModelConfig(await activeStoredModelConfig(env)) });
+  if (request.method === "PUT" && url.pathname === "/api/admin/models") return await saveAdminModelConfig(request, env, admin);
+  if (request.method === "POST" && url.pathname === "/api/admin/models/test-text") return await testAdminModel(request, env, admin, "text");
+  if (request.method === "POST" && url.pathname === "/api/admin/models/test-vision") return await testAdminModel(request, env, admin, "vision");
+  if (request.method === "GET" && url.pathname === "/api/admin/users") return await adminListUsers(env, url);
+  if (request.method === "GET" && /^\/api\/admin\/users\/\d+$/.test(url.pathname)) return await adminGetUser(env, Number(url.pathname.split("/")[4]));
+  if (request.method === "PATCH" && /^\/api\/admin\/users\/\d+\/status$/.test(url.pathname)) return await adminUpdateUserStatus(request, env, admin, Number(url.pathname.split("/")[4]));
+  if (request.method === "PATCH" && /^\/api\/admin\/users\/\d+\/role$/.test(url.pathname)) return await adminUpdateUserRole(request, env, admin, Number(url.pathname.split("/")[4]));
+  if (request.method === "POST" && /^\/api\/admin\/users\/\d+\/password-reset$/.test(url.pathname)) return await adminPasswordReset(env, admin, Number(url.pathname.split("/")[4]));
+  if (request.method === "GET" && url.pathname === "/api/admin/rules") return await adminListRules(env, url);
+  if (request.method === "POST" && url.pathname === "/api/admin/rules") return await adminCreateRule(request, env, admin);
+  if (request.method === "GET" && /^\/api\/admin\/rules\/\d+$/.test(url.pathname)) return await adminGetRule(env, Number(url.pathname.split("/")[4]));
+  if (request.method === "PUT" && /^\/api\/admin\/rules\/\d+$/.test(url.pathname)) return await adminUpdateRule(request, env, admin, Number(url.pathname.split("/")[4]));
+  if (request.method === "DELETE" && /^\/api\/admin\/rules\/\d+$/.test(url.pathname)) return await adminSetRuleStatus(env, admin, Number(url.pathname.split("/")[4]), "archived");
+  if (request.method === "PATCH" && /^\/api\/admin\/rules\/\d+\/status$/.test(url.pathname)) {
+    const body = await readJson<{ status?: string }>(request);
+    return await adminSetRuleStatus(env, admin, Number(url.pathname.split("/")[4]), body.status || "inactive");
+  }
+  if (request.method === "GET" && url.pathname === "/api/admin/system/status") return await adminSystemStatus(env);
+  if (request.method === "GET" && url.pathname === "/api/admin/audit-logs") return await adminAuditLogs(env, url);
+  throw new HttpError(404, "管理员接口不存在");
+}
+
+async function adminDashboard(env: Env): Promise<Response> {
+  const count = async (sql: string, ...params: unknown[]) => (await env.DB.prepare(sql).bind(...params).first<{ n: number }>())?.n || 0;
+  return ok({
+    total_users: await count("SELECT COUNT(*) AS n FROM users WHERE deleted_at IS NULL"),
+    active_users: await count("SELECT COUNT(*) AS n FROM users WHERE status='active' AND deleted_at IS NULL"),
+    disabled_users: await count("SELECT COUNT(*) AS n FROM users WHERE status!='active' AND deleted_at IS NULL"),
+    streamers: await count("SELECT COUNT(*) AS n FROM streamers"),
+    platform_accounts: await count("SELECT COUNT(*) AS n FROM platform_accounts"),
+    live_sessions: await count("SELECT COUNT(*) AS n FROM live_sessions"),
+    screenshots: await count("SELECT COUNT(*) AS n FROM live_session_screenshots"),
+    recognition_success: await count("SELECT COUNT(*) AS n FROM live_session_screenshots WHERE recognition_status IN ('recognized','needs_confirmation','confirmed')"),
+    recognition_failed: await count("SELECT COUNT(*) AS n FROM live_session_screenshots WHERE recognition_status='failed'"),
+    reports: await count("SELECT COUNT(*) AS n FROM review_reports"),
+    report_failed: await count("SELECT COUNT(*) AS n FROM review_reports WHERE quality_status!='passed'"),
+    new_users_7d: await count("SELECT COUNT(*) AS n FROM users WHERE created_at >= datetime('now','-7 days')"),
+    active_users_7d: await count("SELECT COUNT(*) AS n FROM users WHERE last_login_at >= datetime('now','-7 days')")
+  });
+}
+
+async function adminListUsers(env: Env, url: URL): Promise<Response> {
+  const q = `%${url.searchParams.get("q") || ""}%`;
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 20), 1), 100);
+  const offset = Math.max(Number(url.searchParams.get("offset") || 0), 0);
+  const rows = await env.DB.prepare(`
+    SELECT u.id,u.username,u.nickname,u.phone_normalized,u.status,u.role,u.created_at,u.last_login_at,
+      (SELECT COUNT(*) FROM streamers s WHERE s.user_id=u.id) AS streamer_count,
+      (SELECT COUNT(*) FROM live_sessions ls WHERE ls.user_id=u.id) AS review_count,
+      (SELECT COUNT(*) FROM review_reports rr WHERE rr.user_id=u.id) AS report_count
+    FROM users u
+    WHERE u.deleted_at IS NULL AND (u.username LIKE ?1 OR u.nickname LIKE ?1 OR u.phone_normalized LIKE ?1)
+    ORDER BY u.id DESC LIMIT ?2 OFFSET ?3
+  `).bind(q, limit, offset).all();
+  return ok({ items: (rows.results || []).map(maskAdminUser), limit, offset });
+}
+
+async function adminGetUser(env: Env, id: number): Promise<Response> {
+  const row = await env.DB.prepare("SELECT id,username,nickname,phone_normalized,status,role,created_at,last_login_at FROM users WHERE id=?1 AND deleted_at IS NULL").bind(id).first();
+  if (!row) throw new HttpError(404, "用户不存在");
+  return ok(maskAdminUser(row));
+}
+
+async function adminUpdateUserStatus(request: Request, env: Env, admin: UserRow, id: number): Promise<Response> {
+  const body = await readJson<{ status?: string }>(request);
+  const status = body.status === "active" ? "active" : "disabled";
+  if (id === admin.id && status !== "active") throw new HttpError(400, "不能禁用自己的管理员账号。");
+  const result = await env.DB.prepare("UPDATE users SET status=?1, token_version=token_version+1, updated_at=CURRENT_TIMESTAMP WHERE id=?2 AND deleted_at IS NULL RETURNING id,username,nickname,phone_normalized,status,role,created_at,last_login_at").bind(status, id).first();
+  if (!result) throw new HttpError(404, "用户不存在");
+  await audit(env, admin, "admin.user.status", "user", String(id), "success", { status }, request);
+  return ok(maskAdminUser(result));
+}
+
+async function adminUpdateUserRole(request: Request, env: Env, admin: UserRow, id: number): Promise<Response> {
+  const body = await readJson<{ role?: string }>(request);
+  const role = body.role === "admin" ? "admin" : "user";
+  if (id === admin.id && role !== "admin" && await adminCount(env) <= 1) throw new HttpError(400, "系统至少需要保留一个管理员。");
+  const result = await env.DB.prepare("UPDATE users SET role=?1, token_version=token_version+1, updated_at=CURRENT_TIMESTAMP WHERE id=?2 AND deleted_at IS NULL RETURNING id,username,nickname,phone_normalized,status,role,created_at,last_login_at").bind(role, id).first();
+  if (!result) throw new HttpError(404, "用户不存在");
+  await audit(env, admin, "admin.user.role", "user", String(id), "success", { role }, request);
+  return ok(maskAdminUser(result));
+}
+
+async function adminPasswordReset(env: Env, admin: UserRow, id: number): Promise<Response> {
+  const result = await env.DB.prepare("UPDATE users SET token_version=token_version+1, updated_at=CURRENT_TIMESTAMP WHERE id=?1 AND deleted_at IS NULL RETURNING id").bind(id).first();
+  if (!result) throw new HttpError(404, "用户不存在");
+  await audit(env, admin, "admin.user.password_reset", "user", String(id), "success", { invalidated_tokens: true });
+  return ok({ ok: true, message: "已使该用户现有登录状态失效，请用户通过手机号验证码找回密码。" });
+}
+
+async function adminListRules(env: Env, url: URL): Promise<Response> {
+  const q = `%${url.searchParams.get("q") || ""}%`;
+  const category = url.searchParams.get("category") || "";
+  const status = url.searchParams.get("status") || "";
+  const rows = await env.DB.prepare("SELECT * FROM rules WHERE user_id IS NULL AND title LIKE ?1 AND (?2='' OR category=?2) AND (?3='' OR status=?3) ORDER BY id DESC LIMIT 100").bind(q, category, status).all();
+  return ok({ items: rows.results || [] });
+}
+
+async function adminGetRule(env: Env, id: number): Promise<Response> {
+  const row = await env.DB.prepare("SELECT * FROM rules WHERE id=?1 AND user_id IS NULL").bind(id).first();
+  if (!row) throw new HttpError(404, "规则不存在");
+  return ok(row);
+}
+
+async function adminCreateRule(request: Request, env: Env, admin: UserRow): Promise<Response> {
+  const body = await readJson<Record<string, unknown>>(request);
+  const title = String(body.title || "").trim();
+  const content = String(body.content || "").trim();
+  if (!title || !content) throw new HttpError(400, "规则标题和内容不能为空。");
+  const row = await env.DB.prepare(`INSERT INTO rules (user_id,title,category,platform,risk_level,content,recommended_action,prohibited_action,source_name,source_url,published_at,effective_date,expires_at,status,version,created_by,updated_by)
+    VALUES (NULL,?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,1,?14,?14) RETURNING *`)
+    .bind(title, body.category || "运营经验", body.platform || "douyin", body.risk_level || "medium", content, body.recommended_action || "", body.prohibited_action || "", body.source_name || "内部运营经验", body.source_url || "", body.published_at || null, body.effective_date || null, body.expires_at || null, body.status || "active", admin.id).first();
+  await audit(env, admin, "admin.rule.create", "rule", String((row as any).id), "success", { title }, request);
+  return ok(row);
+}
+
+async function adminUpdateRule(request: Request, env: Env, admin: UserRow, id: number): Promise<Response> {
+  const body = await readJson<Record<string, unknown>>(request);
+  const row = await env.DB.prepare(`UPDATE rules SET title=COALESCE(?1,title), category=COALESCE(?2,category), platform=COALESCE(?3,platform), risk_level=COALESCE(?4,risk_level), content=COALESCE(?5,content), recommended_action=COALESCE(?6,recommended_action), prohibited_action=COALESCE(?7,prohibited_action), source_name=COALESCE(?8,source_name), source_url=COALESCE(?9,source_url), published_at=COALESCE(?10,published_at), effective_date=COALESCE(?11,effective_date), expires_at=COALESCE(?12,expires_at), status=COALESCE(?13,status), version=version+1, updated_by=?14, updated_at=CURRENT_TIMESTAMP WHERE id=?15 AND user_id IS NULL RETURNING *`)
+    .bind(body.title ?? null, body.category ?? null, body.platform ?? null, body.risk_level ?? null, body.content ?? null, body.recommended_action ?? null, body.prohibited_action ?? null, body.source_name ?? null, body.source_url ?? null, body.published_at ?? null, body.effective_date ?? null, body.expires_at ?? null, body.status ?? null, admin.id, id).first();
+  if (!row) throw new HttpError(404, "规则不存在");
+  await audit(env, admin, "admin.rule.update", "rule", String(id), "success", { title: (row as any).title }, request);
+  return ok(row);
+}
+
+async function adminSetRuleStatus(env: Env, admin: UserRow, id: number, status: string): Promise<Response> {
+  const safeStatus = ["active", "inactive", "archived"].includes(status) ? status : "inactive";
+  const row = await env.DB.prepare("UPDATE rules SET status=?1, updated_by=?2, updated_at=CURRENT_TIMESTAMP WHERE id=?3 AND user_id IS NULL RETURNING *").bind(safeStatus, admin.id, id).first();
+  if (!row) throw new HttpError(404, "规则不存在");
+  await audit(env, admin, "admin.rule.status", "rule", String(id), "success", { status: safeStatus });
+  return ok(row);
+}
+
+async function adminSystemStatus(env: Env): Promise<Response> {
+  const active = await activeStoredModelConfig(env);
+  const recentModelFailures = await env.DB.prepare("SELECT COUNT(*) AS n FROM admin_audit_logs WHERE action LIKE 'admin.model.test%' AND result!='success' AND created_at >= datetime('now','-7 days')").first<{ n: number }>();
+  return ok({
+    api_worker: "ok",
+    d1: "ok",
+    r2: "ok",
+    text_model: await modelAvailability(env, "text"),
+    vision_model: await modelAvailability(env, "vision"),
+    current_text_model: active?.text_model_name || env.MODEL_TEXT_NAME || "",
+    current_vision_model: active?.vision_model_name || env.MODEL_VISION_NAME || "",
+    last_text_test: active?.last_test_status || "untested",
+    last_model_message: active?.last_test_message || "",
+    registration_mode: registrationMode(env),
+    sms_enabled: smsEnabled(env),
+    model_failures_7d: recentModelFailures?.n || 0
+  });
+}
+
+async function adminAuditLogs(env: Env, url: URL): Promise<Response> {
+  const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 100);
+  const rows = await env.DB.prepare("SELECT al.*, u.username AS admin_username FROM admin_audit_logs al LEFT JOIN users u ON u.id=al.admin_user_id ORDER BY al.id DESC LIMIT ?1").bind(limit).all();
+  return ok({ items: rows.results || [] });
 }
 
 async function listStreamers(request: Request, env: Env, url: URL): Promise<Response> {
@@ -570,10 +737,11 @@ async function generateSessionReport(request: Request, env: Env, sessionId: numb
   const previousRows = (await env.DB.prepare("SELECT * FROM live_sessions WHERE user_id=?1 AND streamer_id=?2 AND id<>?3 AND status='reported' ORDER BY id DESC LIMIT 7").bind(user.id, session.streamer_id, sessionId).all()).results || [];
   const rules = await effectiveRules(env, user.id);
   const reportJson = await generateDiagnosticReport(env, session, metricsRows.map(serializeMetric), previousRows, rules);
+  const runtime = await modelRuntimeConfig(env);
   const quality = checkReportQuality(reportJson);
   const result = await env.DB.prepare(
     "INSERT INTO review_reports (user_id, live_session_id, streamer_id, platform_account_id, summary, report_json, quality_status, quality_warnings, model_name, rule_snapshot) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) RETURNING *"
-  ).bind(user.id, sessionId, session.streamer_id, session.platform_account_id || null, reportJson.one_sentence, JSON.stringify(reportJson), quality.ok ? "passed" : "needs_review", JSON.stringify(quality.warnings), modelName(env, "text"), JSON.stringify(rules)).first<any>();
+  ).bind(user.id, sessionId, session.streamer_id, session.platform_account_id || null, reportJson.one_sentence, JSON.stringify(reportJson), quality.ok ? "passed" : "needs_review", JSON.stringify(quality.warnings), runtime.textModel || modelName(env, "text"), JSON.stringify(rules)).first<any>();
   await saveReportChildren(env, user.id, result.id, reportJson, session.streamer_id);
   await env.DB.prepare("UPDATE live_sessions SET status='reported', main_problem=?1, updated_at=CURRENT_TIMESTAMP WHERE id=?2 AND user_id=?3").bind(reportJson.top_issue?.title || "", sessionId, user.id).run();
   return ok(await serializeReport(env, user.id, result));
@@ -726,7 +894,37 @@ async function requireUser(request: Request, env: Env): Promise<UserRow> {
   const payload = await verifyJwt(env, match[1]);
   const user = await env.DB.prepare("SELECT * FROM users WHERE id=?1").bind(payload.sub).first<UserRow>();
   if (!user || user.status !== "active" || user.deleted_at || Number(user.token_version || 0) !== payload.ver) throw new HttpError(401, "登录已过期，请重新登录");
+  await maybePromoteInitialAdmin(env, user);
   return user;
+}
+
+async function requireAdmin(request: Request, env: Env): Promise<UserRow> {
+  const user = await requireUser(request, env);
+  if (user.role !== "admin") throw new HttpError(403, "你没有系统管理权限。");
+  return user;
+}
+
+async function maybePromoteInitialAdmin(env: Env, user: UserRow): Promise<void> {
+  const target = normalizeUsername(env.INITIAL_ADMIN_USERNAME || env.INITIAL_ADMIN_EMAIL || "");
+  if (!target || user.role === "admin") return;
+  if (normalizeUsername(user.username) === target) {
+    await env.DB.prepare("UPDATE users SET role='admin', updated_at=CURRENT_TIMESTAMP WHERE id=?1 AND role!='admin'").bind(user.id).run();
+    user.role = "admin";
+  }
+}
+
+async function adminCount(env: Env): Promise<number> {
+  return (await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role='admin' AND status='active' AND deleted_at IS NULL").first<{ n: number }>())?.n || 0;
+}
+
+function maskAdminUser(row: any): Record<string, unknown> {
+  return {
+    ...row,
+    phone_normalized: undefined,
+    phone_masked: row.phone_normalized ? maskPhone(row.phone_normalized) : "",
+    role: row.role || "user",
+    status: row.status || "active"
+  };
 }
 
 async function ownedStreamer(env: Env, userId: number, id: number): Promise<Record<string, unknown>> {
@@ -798,45 +996,51 @@ async function recognizeOneScreenshot(env: Env, user: UserRow, session: any, scr
 
 async function recognizeScreenshotWithModel(env: Env, bytes: Uint8Array, contentType: string): Promise<any> {
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return mockRecognition();
-  if (!env.MODEL_API_KEY || !env.MODEL_BASE_URL || !env.MODEL_VISION_NAME) throw new Error("当前尚未配置图片识别模型，请手动录入关键数据，或稍后配置视觉模型。");
+  const config = await modelRuntimeConfig(env);
+  if (!config.apiKey || !config.baseUrl || !config.visionModel) throw new Error("当前尚未配置图片识别模型，请手动录入关键数据，或稍后配置视觉模型。");
   const dataUrl = `data:${contentType};base64,${base64(bytes)}`;
-  return await callOpenAIJson(env, env.MODEL_VISION_NAME, [
+  return await callOpenAIJson(env, config.visionModel, [
     { role: "system", content: "你是直播后台截图识别助手。只提取截图中明确出现的数据，返回严格JSON，不分析、不补全、不猜测。" },
     { role: "user", content: [
       { type: "text", text: visionPrompt() },
       { type: "image_url", image_url: { url: dataUrl } }
     ] }
-  ]);
+  ], config);
 }
 
 async function generatePreparePlanContent(env: Env, streamer: any, input: any): Promise<any> {
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return deterministicPreparePlan(streamer, input);
-  if (!env.MODEL_API_KEY || !env.MODEL_BASE_URL || !env.MODEL_TEXT_NAME) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成开播方案。");
-  const result = await callOpenAIJson(env, env.MODEL_TEXT_NAME, [
+  const config = await modelRuntimeConfig(env);
+  if (!config.apiKey || !config.baseUrl || !config.textModel) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成开播方案。");
+  const result = await callOpenAIJson(env, config.textModel, [
     { role: "system", content: "你是LivePilot直播增长导师。必须返回严格JSON，方案要具体、可执行、合规，不要空泛建议。" },
     { role: "user", content: JSON.stringify({ task: "generate_preparation_plan", streamer, input, schema: preparePlanSchemaHint() }) }
-  ]);
+  ], config);
   return validatePreparePlan(result, streamer, input);
 }
 
 async function generateDiagnosticReport(env: Env, session: any, metrics: any[], previousSessions: any[], rules: any[]): Promise<any> {
   const context = { session, metrics, previousSessions, rules };
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return deterministicDiagnostic(context);
-  if (!env.MODEL_API_KEY || !env.MODEL_BASE_URL || !env.MODEL_TEXT_NAME) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成报告。");
-  const result = await callOpenAIJson(env, env.MODEL_TEXT_NAME, [
+  const config = await modelRuntimeConfig(env);
+  if (!config.apiKey || !config.baseUrl || !config.textModel) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成报告。");
+  const result = await callOpenAIJson(env, config.textModel, [
     { role: "system", content: "你是LivePilot AI直播增长导师。基于确认数据做漏斗诊断，区分事实、推断和待验证假设，输出严格JSON。禁止空泛建议，禁止伪造未提供数据。" },
     { role: "user", content: JSON.stringify({ task: "generate_live_growth_report", context, schema: reportSchemaHint() }) }
-  ]);
+  ], config);
   return validateReportShape(result, context);
 }
 
-async function callOpenAIJson(env: Env, model: string, messages: any[]): Promise<any> {
+async function callOpenAIJson(env: Env, model: string, messages: any[], config?: ModelRuntimeConfig): Promise<any> {
+  const runtime = config || await modelRuntimeConfig(env);
+  if (!runtime.baseUrl || !runtime.apiKey) throw new HttpError(400, "模型尚未配置。");
+  assertSafeModelBaseUrl(runtime.baseUrl, env);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Number(env.MODEL_TIMEOUT_MS || 30000));
+  const timeout = setTimeout(() => controller.abort(), runtime.timeoutMs);
   try {
-    const response = await fetch(`${String(env.MODEL_BASE_URL).replace(/\/$/, "")}/chat/completions`, {
+    const response = await fetch(`${runtime.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${env.MODEL_API_KEY}` },
+      headers: { "content-type": "application/json", authorization: `Bearer ${runtime.apiKey}` },
       body: JSON.stringify({ model, messages, response_format: { type: "json_object" }, temperature: 0.2 }),
       signal: controller.signal
     });
@@ -850,8 +1054,197 @@ async function callOpenAIJson(env: Env, model: string, messages: any[]): Promise
   }
 }
 
+async function modelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
+  if (env.MODEL_PROVIDER === "mock" && isDev(env)) return { provider: "mock", baseUrl: "", apiKey: "", textModel: "mock-text", visionModel: "mock-vision", timeoutMs: 30000, source: "mock" };
+  const stored = await activeStoredModelConfig(env);
+  if (stored) {
+    return {
+      provider: stored.provider_name || "openai-compatible",
+      baseUrl: stored.base_url || "",
+      apiKey: await decryptModelKey(env, stored.api_key_ciphertext, stored.api_key_iv),
+      textModel: stored.text_model_name || "",
+      visionModel: stored.vision_model_name || "",
+      timeoutMs: Number(stored.timeout_ms || 30000),
+      source: "admin"
+    };
+  }
+  if (env.MODEL_API_KEY || env.MODEL_BASE_URL || env.MODEL_TEXT_NAME || env.MODEL_VISION_NAME) {
+    return {
+      provider: env.MODEL_PROVIDER || "openai-compatible",
+      baseUrl: env.MODEL_BASE_URL || "",
+      apiKey: env.MODEL_API_KEY || "",
+      textModel: env.MODEL_TEXT_NAME || "",
+      visionModel: env.MODEL_VISION_NAME || "",
+      timeoutMs: Number(env.MODEL_TIMEOUT_MS || 30000),
+      source: "secret"
+    };
+  }
+  return { provider: "", baseUrl: "", apiKey: "", textModel: "", visionModel: "", timeoutMs: 30000, source: "none" };
+}
+
+async function activeStoredModelConfig(env: Env): Promise<any | null> {
+  return await env.DB.prepare("SELECT * FROM system_model_configs WHERE enabled=1 ORDER BY updated_at DESC, id DESC LIMIT 1").first<any>();
+}
+
+async function listModelConfigs(env: Env): Promise<any[]> {
+  const rows = await env.DB.prepare("SELECT * FROM system_model_configs ORDER BY enabled DESC, updated_at DESC, id DESC LIMIT 20").all();
+  return rows.results || [];
+}
+
+function maskModelConfig(row: any | null): Record<string, unknown> | null {
+  if (!row) return null;
+  return {
+    id: row.id,
+    provider_name: row.provider_name,
+    base_url: row.base_url,
+    api_key_masked: row.api_key_last_four ? `****${row.api_key_last_four}` : "",
+    api_key_last_four: row.api_key_last_four || "",
+    text_model_name: row.text_model_name || "",
+    vision_model_name: row.vision_model_name || "",
+    timeout_ms: row.timeout_ms || 30000,
+    enabled: Boolean(row.enabled),
+    last_test_status: row.last_test_status,
+    last_test_message: row.last_test_message,
+    last_tested_at: row.last_tested_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    updated_by: row.updated_by
+  };
+}
+
+async function saveAdminModelConfig(request: Request, env: Env, admin: UserRow): Promise<Response> {
+  const body = await readJson<Record<string, unknown>>(request);
+  const baseUrl = String(body.base_url || "").trim();
+  assertSafeModelBaseUrl(baseUrl, env);
+  const existing = Number(body.id || 0) ? await env.DB.prepare("SELECT * FROM system_model_configs WHERE id=?1").bind(Number(body.id)).first<any>() : null;
+  const rawKey = String(body.api_key || "");
+  let cipher = existing?.api_key_ciphertext || "";
+  let iv = existing?.api_key_iv || "";
+  let lastFour = existing?.api_key_last_four || "";
+  if (rawKey) {
+    const encrypted = await encryptModelKey(env, rawKey);
+    cipher = encrypted.ciphertext;
+    iv = encrypted.iv;
+    lastFour = rawKey.slice(-4);
+  }
+  if (!cipher) throw new HttpError(400, "请填写模型 API Key。");
+  if (body.enabled === true) await env.DB.prepare("UPDATE system_model_configs SET enabled=0 WHERE enabled=1").run();
+  const values = [
+    String(body.provider_name || existing?.provider_name || "openai-compatible"),
+    baseUrl,
+    cipher,
+    iv,
+    lastFour,
+    String(body.text_model_name || existing?.text_model_name || ""),
+    String(body.vision_model_name || existing?.vision_model_name || ""),
+    Number(body.timeout_ms || existing?.timeout_ms || 30000),
+    body.enabled === true ? 1 : existing?.enabled || 0,
+    admin.id
+  ];
+  const row = existing
+    ? await env.DB.prepare("UPDATE system_model_configs SET provider_name=?1, base_url=?2, api_key_ciphertext=?3, api_key_iv=?4, api_key_last_four=?5, text_model_name=?6, vision_model_name=?7, timeout_ms=?8, enabled=?9, updated_by=?10, updated_at=CURRENT_TIMESTAMP WHERE id=?11 RETURNING *").bind(...values, existing.id).first()
+    : await env.DB.prepare("INSERT INTO system_model_configs (provider_name, base_url, api_key_ciphertext, api_key_iv, api_key_last_four, text_model_name, vision_model_name, timeout_ms, enabled, updated_by) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) RETURNING *").bind(...values).first();
+  await audit(env, admin, "admin.model.save", "system_model_config", String((row as any).id), "success", { enabled: Boolean((row as any).enabled), provider_name: (row as any).provider_name }, request);
+  return ok(maskModelConfig(row));
+}
+
+async function testAdminModel(request: Request, env: Env, admin: UserRow, kind: "text" | "vision"): Promise<Response> {
+  const started = Date.now();
+  if (env.MODEL_PROVIDER === "mock" && isDev(env)) {
+    await audit(env, admin, `admin.model.test_${kind}`, "system_model_config", "mock", "success", { local_mock: true }, request);
+    return ok({ ok: true, status: "success", model_name: `mock-${kind}`, elapsed_ms: Date.now() - started, message: "本地Mock模型测试成功。" });
+  }
+  const config = await modelRuntimeConfig(env);
+  if (!config.apiKey || !config.baseUrl) throw new HttpError(400, "模型尚未配置。");
+  try {
+    if (kind === "text") {
+      if (!config.textModel) throw new HttpError(400, "文本模型名称未配置。");
+      await callOpenAIJson(env, config.textModel, [
+        { role: "system", content: "只返回JSON。" },
+        { role: "user", content: "请返回 {\"ok\": true, \"message\": \"OK\"}" }
+      ], config);
+    } else {
+      if (!config.visionModel) throw new HttpError(400, "图片识别模型名称未配置。");
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+      await recognizeScreenshotWithModel(env, png, "image/png");
+    }
+    const ms = Date.now() - started;
+    await env.DB.prepare("UPDATE system_model_configs SET last_test_status='success', last_test_message=?1, last_tested_at=CURRENT_TIMESTAMP WHERE enabled=1").bind(`${kind === "text" ? "文本" : "图片"}模型连接成功，用时 ${ms}ms。`).run();
+    await audit(env, admin, `admin.model.test_${kind}`, "system_model_config", "active", "success", { elapsed_ms: ms }, request);
+    return ok({ ok: true, status: "success", model_name: kind === "text" ? config.textModel : config.visionModel, elapsed_ms: ms, message: "模型连接成功。" });
+  } catch (error) {
+    const message = modelErrorMessage(error);
+    await env.DB.prepare("UPDATE system_model_configs SET last_test_status='failed', last_test_message=?1, last_tested_at=CURRENT_TIMESTAMP WHERE enabled=1").bind(message).run();
+    await audit(env, admin, `admin.model.test_${kind}`, "system_model_config", "active", "failed", { message }, request);
+    throw new HttpError(400, message);
+  }
+}
+
+async function modelAvailability(env: Env, kind: "text" | "vision"): Promise<string> {
+  const config = await modelRuntimeConfig(env);
+  if (!config.apiKey || !config.baseUrl) return "未配置";
+  if (kind === "text" && !config.textModel) return "未配置";
+  if (kind === "vision" && !config.visionModel) return "未配置";
+  return "已配置";
+}
+
+async function encryptModelKey(env: Env, value: string): Promise<{ ciphertext: string; iv: string }> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await modelCryptoKey(env);
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(value));
+  return { ciphertext: base64(new Uint8Array(encrypted)), iv: base64(iv) };
+}
+
+async function decryptModelKey(env: Env, ciphertext: string, iv: string): Promise<string> {
+  if (!ciphertext || !iv) return "";
+  const key = await modelCryptoKey(env);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromBase64(iv) }, key, fromBase64(ciphertext));
+  return new TextDecoder().decode(plain);
+}
+
+async function modelCryptoKey(env: Env): Promise<CryptoKey> {
+  const secret = env.MODEL_ENCRYPTION_KEY || (isDev(env) ? jwtSecret(env) : "");
+  if (!secret || secret.length < 16) throw new HttpError(500, "模型密钥加密配置缺失，请配置 MODEL_ENCRYPTION_KEY。");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
+  return await crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+function assertSafeModelBaseUrl(value: string, env: Env): void {
+  let url: URL;
+  try { url = new URL(value); } catch { throw new HttpError(400, "Base URL格式不正确。"); }
+  if (!["https:", "http:"].includes(url.protocol)) throw new HttpError(400, "Base URL只支持HTTP或HTTPS。");
+  if (env.APP_ENV === "production" && url.protocol !== "https:") throw new HttpError(400, "生产环境模型Base URL必须使用HTTPS。");
+  const host = url.hostname.toLowerCase();
+  if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(host) || host.endsWith(".local")) throw new HttpError(400, "Base URL不能指向本机或内网地址。");
+  if (/^(10|127|169\.254|192\.168)\./.test(host) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) throw new HttpError(400, "Base URL不能指向内网地址。");
+}
+
+function modelErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "模型测试失败。";
+  if (/401|403|API Key|authorization/i.test(message)) return "API Key无效或没有权限。";
+  if (/404|model/i.test(message)) return "模型名称不存在或当前账号无权使用。";
+  if (/abort|timeout|timed/i.test(message)) return "模型请求超时，请检查网络或调大超时时间。";
+  if (/JSON|format|返回/.test(message)) return "模型返回格式异常，未能解析为结构化JSON。";
+  return "模型连接失败，请检查Base URL、模型名称和服务状态。";
+}
+
+async function audit(env: Env, admin: UserRow, action: string, targetType: string, targetId: string, result = "success", metadata: Record<string, unknown> = {}, request?: Request): Promise<void> {
+  const ipHash = request ? await hmacHex(env, clientIp(request)) : "";
+  await env.DB.prepare("INSERT INTO admin_audit_logs (admin_user_id, action, target_type, target_id, result, metadata, ip_hash) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)")
+    .bind(admin.id, action, targetType, targetId, result, JSON.stringify(sanitizeAudit(metadata)), ipHash).run();
+}
+
+function sanitizeAudit(metadata: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (/key|secret|password|token|authorization/i.test(key)) continue;
+    out[key] = typeof value === "string" ? value.slice(0, 300) : value;
+  }
+  return out;
+}
+
 async function effectiveRules(env: Env, userId: number): Promise<any[]> {
-  const rows = await env.DB.prepare("SELECT id, title, category, platform, risk_level, content, recommended_action, prohibited_action, source_name, effective_date, updated_at FROM rules WHERE status='active' AND (user_id IS NULL OR user_id=?1) ORDER BY user_id IS NOT NULL DESC, id DESC LIMIT 20").bind(userId).all();
+  const rows = await env.DB.prepare("SELECT id, title, category, platform, risk_level, content, recommended_action, prohibited_action, source_name, effective_date, updated_at FROM rules WHERE status='active' AND (expires_at IS NULL OR expires_at='' OR expires_at > CURRENT_TIMESTAMP) AND (user_id IS NULL OR user_id=?1) ORDER BY user_id IS NOT NULL DESC, id DESC LIMIT 20").bind(userId).all();
   return rows.results || [];
 }
 
@@ -1367,7 +1760,7 @@ function serializePlatformAccountSync(row: any): Record<string, unknown> {
 }
 
 function publicUser(user: AuthUser): Record<string, unknown> {
-  return { id: user.id, name: user.nickname || user.username, nickname: user.nickname || user.username, username: user.username };
+  return { id: user.id, name: user.nickname || user.username, nickname: user.nickname || user.username, username: user.username, role: user.role || "user" };
 }
 
 async function hashPassword(password: string): Promise<string> {

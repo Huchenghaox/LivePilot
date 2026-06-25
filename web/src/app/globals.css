@@ -121,6 +121,15 @@ select option {
   outline-offset: 3px;
 }
 
+.input-dark {
+  min-height: 44px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line-strong);
+  background: rgba(23, 23, 31, 0.88);
+  padding: 0.625rem 0.75rem;
+  color: var(--text);
+}
+
 /* Compatibility layer for existing Tailwind utility-heavy pages. */
 .bg-soft,
 .bg-white {

@@ -123,6 +123,21 @@ Validated locally:
 | Feedback | `GET /api/feedback` | Migrated | Current-user scoped |
 | Rules | `GET /api/rules` | Migrated | Lists active system/user rules for MVP |
 
+## Stage 3 Admin Operations APIs
+
+| Area | Endpoint | Status | Notes |
+| --- | --- | --- | --- |
+| Admin | `GET /api/admin/dashboard` | Migrated | Requires `users.role='admin'` |
+| Models | `GET/PUT /api/admin/models` | Migrated | Stores encrypted system model config in D1 |
+| Models | `POST /api/admin/models/test-text` | Migrated | Real provider test outside local mock mode |
+| Models | `POST /api/admin/models/test-vision` | Migrated | Verifies vision-capable model path |
+| Users | `GET /api/admin/users` | Migrated | Masked phone, counts, search and pagination |
+| Users | `PATCH /api/admin/users/:id/status` | Migrated | Disables/enables account and invalidates tokens |
+| Users | `PATCH /api/admin/users/:id/role` | Migrated | Protects the last admin |
+| Rules | `/api/admin/rules*` | Migrated | System rule CRUD/status for reports and plans |
+| System | `GET /api/admin/system/status` | Migrated | No secret values returned |
+| Audit | `GET /api/admin/audit-logs` | Migrated | Admin action history without secrets |
+
 ## Model Boundary
 
 The Worker uses system-level model configuration only:
@@ -132,8 +147,9 @@ The Worker uses system-level model configuration only:
 - `MODEL_TEXT_NAME`
 - `MODEL_VISION_NAME`
 - `MODEL_TIMEOUT_MS`
+- `MODEL_ENCRYPTION_KEY` for AES-GCM encryption of admin-managed model keys
 
-These are Cloudflare secrets or environment bindings. They are not stored in D1, not returned to the frontend, and not committed to Git.
+These are Cloudflare secrets or environment bindings. Admin-managed model API keys are encrypted before being stored in D1, never returned to the frontend, and never committed to Git.
 
 Local development can use `MODEL_PROVIDER=mock` in untracked `.dev.vars`. This is only for automated local smoke tests. Production does not return mock recognition or mock reports.
 

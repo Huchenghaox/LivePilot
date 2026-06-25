@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bot, Home, UploadCloud, UserRound, Wand2 } from "lucide-react";
+import { Bot, Home, ShieldCheck, UploadCloud, UserRound, Wand2 } from "lucide-react";
 import { clearAuth } from "@/lib/api";
 
 const nav = [
@@ -16,8 +17,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isAuth = pathname === "/login";
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    try {
+      const user = JSON.parse(window.localStorage.getItem("user") || "{}") as { role?: string };
+      setIsAdmin(user.role === "admin");
+    } catch {
+      setIsAdmin(false);
+    }
+  }, [pathname]);
 
   if (isAuth) return <>{children}</>;
+
+  const visibleNav = isAdmin ? [...nav, { href: "/admin", label: "系统管理", icon: ShieldCheck }] : nav;
 
   return (
     <div className="min-h-screen bg-soft">
@@ -32,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav className="space-y-1">
-          {nav.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
             return (
@@ -66,7 +79,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto max-w-6xl px-4 py-6 lg:px-8">{children}</div>
       </main>
       <nav className="app-shell-nav fixed bottom-0 left-0 right-0 z-50 grid grid-cols-4 border-t border-white/10 bg-[#101016]/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 backdrop-blur-xl lg:hidden">
-        {nav.map((item) => {
+        {visibleNav.slice(0, 5).map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           return (

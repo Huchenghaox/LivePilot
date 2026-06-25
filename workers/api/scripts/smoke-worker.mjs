@@ -84,10 +84,96 @@ async function main() {
     body: JSON.stringify({ username: username.toUpperCase(), password })
   });
   assert(login.access_token, "login should return token");
-  const token = login.access_token;
+  let token = login.access_token;
 
   const me = await request("/api/me", { headers: auth(token) });
   assert(me.user?.username === username, "me should return current user");
+  assert(me.user?.role === "user", "new registered users should be normal users");
+
+  const ordinaryAdminDenied = await requestStatus("/api/admin/dashboard", { headers: auth(token) });
+  assert(ordinaryAdminDenied.status === 403, "normal user should not access admin dashboard");
+
+  const adminSession = await request("/api/dev/session", {
+    method: "POST",
+    body: JSON.stringify({ username: "livepilotadmin", nickname: "LivePilot管理员" })
+  });
+  const adminToken = adminSession.token;
+  const adminMe = await request("/api/me", { headers: auth(adminToken) });
+  assert(adminMe.user?.role === "admin", "initial admin username should be promoted by Worker secret");
+
+  const adminDashboard = await request("/api/admin/dashboard", { headers: auth(adminToken) });
+  assert(adminDashboard.total_users >= 1, "admin dashboard should expose operational counts");
+
+  const modelSave = await request("/api/admin/models", {
+    method: "PUT",
+    headers: auth(adminToken),
+    body: JSON.stringify({
+      provider_name: "openai-compatible",
+      base_url: "https://api.example.com/v1",
+      api_key: `admin-model-key-${stamp}`,
+      text_model_name: "mock-text",
+      vision_model_name: "mock-vision",
+      timeout_ms: 30000,
+      enabled: false
+    })
+  });
+  assert(modelSave.api_key_masked?.endsWith(stamp.slice(-4)) && !JSON.stringify(modelSave).includes(`admin-model-key-${stamp}`), "model key should be encrypted and masked");
+  const ssrf = await requestStatus("/api/admin/models", {
+    method: "PUT",
+    headers: auth(adminToken),
+    body: JSON.stringify({ base_url: "http://127.0.0.1:8080", api_key: "secret", enabled: false })
+  });
+  assert(ssrf.status === 400, "admin model base URL should block localhost");
+  const textTest = await request("/api/admin/models/test-text", { method: "POST", headers: auth(adminToken), body: "{}" });
+  assert(textTest.status === "success", "admin text model test should work in local mock mode");
+
+  const createdRule = await request("/api/admin/rules", {
+    method: "POST",
+    headers: auth(adminToken),
+    body: JSON.stringify({
+      title: `烟测规则${stamp}`,
+      category: "平台规则摘要",
+      platform: "douyin",
+      risk_level: "medium",
+      content: "避免把运营经验说成平台官方规则。",
+      source_name: "LivePilot烟测"
+    })
+  });
+  assert(createdRule.id, "admin should create system rule");
+  const ruleList = await request("/api/admin/rules", { headers: auth(adminToken) });
+  assert(ruleList.items?.some((rule) => rule.id === createdRule.id), "admin rule list should include created rule");
+
+  const users = await request(`/api/admin/users?q=${username}`, { headers: auth(adminToken) });
+  assert(users.items?.some((item) => item.username === username && item.phone_masked), "admin users should be searchable with masked phone");
+  const disabled = await request(`/api/admin/users/${me.user.id}/status`, {
+    method: "PATCH",
+    headers: auth(adminToken),
+    body: JSON.stringify({ status: "disabled" })
+  });
+  assert(disabled.status === "disabled", "admin should disable normal user");
+  const disabledLogin = await requestStatus("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
+  assert(disabledLogin.status === 401, "disabled user should not login");
+  await request(`/api/admin/users/${me.user.id}/status`, {
+    method: "PATCH",
+    headers: auth(adminToken),
+    body: JSON.stringify({ status: "active" })
+  });
+  const relogin = await request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
+  token = relogin.access_token;
+  const selfDisable = await requestStatus(`/api/admin/users/${adminMe.user.id}/status`, {
+    method: "PATCH",
+    headers: auth(adminToken),
+    body: JSON.stringify({ status: "disabled" })
+  });
+  assert(selfDisable.status === 400, "admin should not disable self");
+  const auditLogs = await request("/api/admin/audit-logs", { headers: auth(adminToken) });
+  assert(auditLogs.items?.some((item) => item.action === "admin.model.save"), "admin audit log should record model save");
 
   const streamer = await request("/api/streamers", {
     method: "POST",
