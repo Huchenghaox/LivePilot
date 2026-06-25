@@ -5,7 +5,10 @@
   "compatibility_date": "2026-06-25",
   "workers_dev": true,
   "vars": {
-    "APP_ENV": "development"
+    "APP_ENV": "production",
+    "REGISTRATION_MODE": "closed",
+    "SMS_ENABLED": "false",
+    "SMS_PROVIDER": "disabled"
   },
   "d1_databases": [
     {
