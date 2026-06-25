@@ -74,6 +74,8 @@ def get_settings() -> Settings:
         raise RuntimeError("生产环境 JWT_SECRET 长度至少需要 32 个字符。")
     if settings.is_production and not settings.allowed_cors_origins:
         raise RuntimeError("生产环境必须显式配置 CORS_ORIGINS。")
+    if settings.is_production and "*" in settings.allowed_cors_origins:
+        raise RuntimeError("生产环境 CORS_ORIGINS 不能使用 *。")
     if settings.is_production and settings.registration_mode not in {"closed", "invite", "open"}:
         raise RuntimeError("REGISTRATION_MODE 只能是 closed、invite 或 open。")
     if settings.is_production and settings.registration_mode == "open" and not settings.sms_enabled:

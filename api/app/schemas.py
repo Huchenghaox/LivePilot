@@ -152,6 +152,19 @@ def parse_common_number(value: Any) -> Optional[int]:
     text = str(value).strip().replace(",", "").replace("，", "")
     if not text:
         return None
+    if any(unit in text for unit in ["小时", "分钟", "分", "秒"]):
+        hours = re.search(r"(\d+(?:\.\d+)?)\s*小时", text)
+        minutes = re.search(r"(\d+(?:\.\d+)?)\s*(?:分钟|分)", text)
+        seconds = re.search(r"(\d+(?:\.\d+)?)\s*秒", text)
+        if hours or minutes or seconds:
+            total = 0.0
+            if hours:
+                total += float(hours.group(1)) * 3600
+            if minutes:
+                total += float(minutes.group(1)) * 60
+            if seconds:
+                total += float(seconds.group(1))
+            return int(round(total))
     multiplier = 1
     if "万" in text:
         multiplier = 10000

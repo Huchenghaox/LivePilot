@@ -1,5 +1,6 @@
 import pytest
 
+from app.schemas import parse_common_number
 from app.security import (
     decrypt_secret,
     encrypt_secret,
@@ -36,3 +37,11 @@ def test_username_and_phone_normalization_rules():
     for username in ["admin", "13812345678", "中文名", "a b c", "1anchor"]:
         with pytest.raises(ValueError):
             validate_username(username)
+
+
+def test_common_number_parses_livestream_inputs():
+    assert parse_common_number("1.2万") == 12000
+    assert parse_common_number("2.3万") == 23000
+    assert parse_common_number("3分20秒") == 200
+    assert parse_common_number("1小时2分3秒") == 3723
+    assert parse_common_number("200秒") == 200

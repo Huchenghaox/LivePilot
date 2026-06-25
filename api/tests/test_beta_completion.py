@@ -643,7 +643,7 @@ def test_platform_account_member_role_can_update_and_remove():
     try:
         ensure_platform_access(account["id"], operator, db)
     except Exception as exc:
-        assert getattr(exc, "status_code", None) == 403
+        assert getattr(exc, "status_code", None) == 404
     else:
         raise AssertionError("被移除成员不应继续访问平台账号")
 
@@ -659,7 +659,7 @@ def test_non_member_cannot_read_platform_account():
     try:
         get_platform_account(account["id"], stranger, db)
     except Exception as exc:
-        assert getattr(exc, "status_code", None) == 403
+        assert getattr(exc, "status_code", None) == 404
     else:
         raise AssertionError("非成员不应查看平台账号")
 
@@ -682,7 +682,7 @@ def test_duplicate_manual_account_does_not_auto_add_unrelated_user():
     try:
         get_platform_account(account["id"], stranger, db)
     except Exception as exc:
-        assert getattr(exc, "status_code", None) == 403
+        assert getattr(exc, "status_code", None) == 404
     else:
         raise AssertionError("重复记录失败后不应获得账号读取权限")
 

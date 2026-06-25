@@ -31,6 +31,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.deps import current_user
 from app.media_processing import FFmpegProcessor, MediaProcessingError
+from app.migrations import migration_status
 from app.models import (
     AnalysisJob,
     AnchorPlatformAccount,
@@ -131,7 +132,9 @@ def ready(db: Session = Depends(get_db)) -> dict:
     checks = {
         "database": False,
         "upload_dir_writable": False,
+        "migrations": False,
     }
+    migrations = {"current": None, "expected": None, "up_to_date": False}
     try:
         db.execute(text("SELECT 1"))
         checks["database"] = True
@@ -146,7 +149,12 @@ def ready(db: Session = Depends(get_db)) -> dict:
         checks["upload_dir_writable"] = True
     except OSError:
         checks["upload_dir_writable"] = False
-    return {"ok": all(checks.values()), "name": settings.app_name, "checks": checks}
+    try:
+        migrations = migration_status()
+        checks["migrations"] = migrations["up_to_date"] if settings.is_production else True
+    except Exception:
+        checks["migrations"] = False if settings.is_production else True
+    return {"ok": all(checks.values()), "name": settings.app_name, "checks": checks, "migrations": migrations}
 
 
 def client_ip(request: Optional[Request]) -> str:
@@ -820,7 +828,7 @@ def ensure_platform_access(account_id: int, user: User, db: Session, manage: boo
         raise HTTPException(status_code=404, detail="平台账号不存在")
     link = user_platform_link(db, user.id, account_id)
     if not link:
-        raise HTTPException(status_code=403, detail="你没有权限查看这个平台账号")
+        raise HTTPException(status_code=404, detail="平台账号不存在")
     if manage and link.role not in MANAGE_PLATFORM_ROLES:
         raise HTTPException(status_code=403, detail="你没有权限管理这个平台账号")
     return account

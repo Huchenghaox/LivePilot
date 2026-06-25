@@ -8,6 +8,7 @@ from sqlalchemy import text
 
 from app.config import get_settings
 from app.database import Base, SessionLocal, engine
+from app.migrations import migration_status
 from app.routes import router
 from app.schema_maintenance import ensure_dev_schema
 
@@ -36,7 +37,8 @@ def root_health() -> dict:
 
 @app.get("/ready")
 def root_ready() -> dict:
-    checks = {"database": False, "upload_dir_writable": False}
+    checks = {"database": False, "upload_dir_writable": False, "migrations": False}
+    migrations = {"current": None, "expected": None, "up_to_date": False}
     with SessionLocal() as db:
         try:
             db.execute(text("SELECT 1"))
@@ -51,7 +53,12 @@ def root_ready() -> dict:
         checks["upload_dir_writable"] = True
     except OSError:
         checks["upload_dir_writable"] = False
-    return {"ok": all(checks.values()), "name": settings.app_name, "checks": checks}
+    try:
+        migrations = migration_status()
+        checks["migrations"] = migrations["up_to_date"] if settings.is_production else True
+    except Exception:
+        checks["migrations"] = False if settings.is_production else True
+    return {"ok": all(checks.values()), "name": settings.app_name, "checks": checks, "migrations": migrations}
 
 
 @app.exception_handler(RequestValidationError)
