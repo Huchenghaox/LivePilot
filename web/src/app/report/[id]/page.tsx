@@ -284,7 +284,12 @@ export default function ReportPage() {
               <Info label="新流量承接话术" value={(report.next_plan ?? emptyNextPlan).new_traffic_script} />
               <PlanList title="下一场三个目标" items={(report.next_plan ?? emptyNextPlan).goals} />
               <div className="flex flex-wrap gap-2">
-                <Link href="/prepare" className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold">开始准备下一场</Link>
+                <Link
+                  href={`/prepare?source_session_id=${params.id}&topic=${encodeURIComponent((report.next_plan ?? emptyNextPlan).recommended_theme)}`}
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold"
+                >
+                  根据本报告准备下一场
+                </Link>
                 <SecondaryButton onClick={() => copyText((report.next_plan ?? emptyNextPlan).opening_3_minutes)}>复制开场话术</SecondaryButton>
               </div>
             </div>

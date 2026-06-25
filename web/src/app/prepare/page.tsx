@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { Card, PageTitle, PrimaryButton, StatusMessage } from "@/components/ui";
 
@@ -39,6 +40,15 @@ const goals = ["更多人进入", "留得更久", "更多互动", "更多关注"
 const liveForms = ["单人口播", "评论互动", "互动连麦", "商品或服务讲解"];
 
 export default function PreparePage() {
+  return (
+    <Suspense fallback={<StatusMessage type="loading" text="正在读取开播准备..." />}>
+      <PreparePageContent />
+    </Suspense>
+  );
+}
+
+function PreparePageContent() {
+  const searchParams = useSearchParams();
   const [streamers, setStreamers] = useState<Streamer[]>([]);
   const [streamerId, setStreamerId] = useState("");
   const [platformAccounts, setPlatformAccounts] = useState<PlatformAccount[]>([]);
@@ -175,6 +185,15 @@ export default function PreparePage() {
   }, []);
 
   useEffect(() => {
+    const sourceSessionId = searchParams.get("source_session_id");
+    const suggestedTopic = searchParams.get("topic");
+    if (suggestedTopic && !topic) setTopic(suggestedTopic);
+    if (sourceSessionId && !specialNotes) {
+      setSpecialNotes(`根据第 ${sourceSessionId} 场复盘报告准备下一场，优先承接报告中的行动清单。`);
+    }
+  }, [searchParams, specialNotes, topic]);
+
+  useEffect(() => {
     void loadPlatformAccounts(streamerId);
   }, [streamerId]);
 
@@ -184,6 +203,11 @@ export default function PreparePage() {
       {loading ? <StatusMessage type="loading" text="正在读取开播准备..." /> : null}
       {error ? <div className="mb-4"><StatusMessage type="error" text={error} onRetry={load} /></div> : null}
       {message ? <div className="mb-4 rounded-2xl border border-success/30 bg-success/10 p-3 text-sm text-success">{message}</div> : null}
+      {searchParams.get("source_session_id") ? (
+        <div className="mb-4 rounded-2xl border border-brand/25 bg-brand/10 p-3 text-sm text-brand">
+          已从复盘报告带入下一场准备方向。你可以修改主题和注意事项后再生成方案。
+        </div>
+      ) : null}
       {!loading && !streamers.length ? (
         <Card>
           <StatusMessage type="empty" text="还没有可用主播。先创建主播档案，再生成开播方案。" />

@@ -276,19 +276,19 @@ export default function LoginPage() {
         </div>
 
         <div className="mb-5 grid grid-cols-3 rounded-2xl border border-white/10 bg-white/[0.04] p-1">
-          <button className={`rounded-xl px-3 py-2 text-sm font-semibold ${view === "login" ? "brand-gradient text-[#061016]" : "text-slate-400"}`} onClick={() => switchView("login")}>
+          <button type="button" className={`rounded-xl px-3 py-2 text-sm font-semibold ${view === "login" ? "brand-gradient text-[#061016]" : "text-slate-400"}`} onClick={() => switchView("login")}>
             登录
           </button>
-          <button className={`rounded-xl px-3 py-2 text-sm font-semibold ${view === "register" ? "brand-gradient text-[#061016]" : "text-slate-400"}`} onClick={() => switchView("register")}>
+          <button type="button" className={`rounded-xl px-3 py-2 text-sm font-semibold ${view === "register" ? "brand-gradient text-[#061016]" : "text-slate-400"}`} onClick={() => switchView("register")}>
             注册
           </button>
-          <button className={`rounded-xl px-3 py-2 text-sm font-semibold ${view === "reset" ? "brand-gradient text-[#061016]" : "text-slate-400"}`} onClick={() => switchView("reset")}>
+          <button type="button" className={`rounded-xl px-3 py-2 text-sm font-semibold ${view === "reset" ? "brand-gradient text-[#061016]" : "text-slate-400"}`} onClick={() => switchView("reset")}>
             找回密码
           </button>
         </div>
 
         {view === "login" ? (
-          <section className="space-y-4">
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitLogin(); }}>
             <div className="rounded-2xl border border-brand/20 bg-brand/10 p-3 text-sm text-brand">
               使用用户名和密码登录。手机号只用于注册验证和找回密码。
             </div>
@@ -296,14 +296,14 @@ export default function LoginPage() {
               <input className="w-full bg-transparent outline-none" autoComplete="username" placeholder="例如 livepilot_user" value={loginUsername} onChange={(event) => setLoginUsername(event.target.value)} />
             </Field>
             <PasswordField value={loginPassword} onChange={setLoginPassword} show={showPassword} setShow={setShowPassword} autoComplete="current-password" />
-            <PrimaryButton disabled={loading} onClick={submitLogin} className="w-full">
+            <PrimaryButton type="submit" disabled={loading} className="w-full">
               {loading ? "登录中..." : "登录"}
             </PrimaryButton>
-          </section>
+          </form>
         ) : null}
 
         {view === "register" ? (
-          <section className="space-y-4">
+          <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void submitRegister(); }}>
             {registrationMode.mode === "closed" ? (
               <StatusMessage type="warning" text="当前暂未开放注册。你可以稍后再试，或联系管理员获取开放时间。" />
             ) : (
@@ -349,16 +349,23 @@ export default function LoginPage() {
                     。
                   </span>
                 </label>
-                <PrimaryButton disabled={loading} onClick={submitRegister} className="w-full">
+                <PrimaryButton type="submit" disabled={loading} className="w-full">
                   {loading ? "注册中..." : "注册并进入"}
                 </PrimaryButton>
               </>
             )}
-          </section>
+          </form>
         ) : null}
 
         {view === "reset" ? (
-          <section className="space-y-4">
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (resetStep === 1) void startReset();
+              if (resetStep === 2) void finishReset();
+            }}
+          >
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm leading-6 text-slate-400">
               找回密码会向绑定手机号发送验证码。为了保护账号安全，页面不会提示账号是否存在。
             </div>
@@ -372,7 +379,7 @@ export default function LoginPage() {
                 <Field label="用户名或绑定手机号">
                   <input className="w-full bg-transparent outline-none" placeholder="输入用户名或手机号" value={resetAccount} onChange={(event) => setResetAccount(event.target.value)} />
                 </Field>
-                <PrimaryButton disabled={loading} onClick={startReset} className="w-full">
+                <PrimaryButton type="submit" disabled={loading} className="w-full">
                   {loading ? "发送中..." : "发送验证码"}
                 </PrimaryButton>
               </>
@@ -389,14 +396,14 @@ export default function LoginPage() {
                 </Field>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <SecondaryButton onClick={() => setResetStep(1)}>返回修改账号</SecondaryButton>
-                  <PrimaryButton disabled={loading} onClick={finishReset}>{loading ? "修改中..." : "确认修改密码"}</PrimaryButton>
+                  <PrimaryButton type="submit" disabled={loading}>{loading ? "修改中..." : "确认修改密码"}</PrimaryButton>
                 </div>
               </>
             ) : null}
             {resetStep === 3 ? (
               <PrimaryButton onClick={() => { setView("login"); setResetStep(1); }} className="w-full">返回登录</PrimaryButton>
             ) : null}
-          </section>
+          </form>
         ) : null}
 
         {process.env.NODE_ENV === "development" ? (

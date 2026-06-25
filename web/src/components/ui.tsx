@@ -18,6 +18,7 @@ export function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElemen
   return (
     <button
       {...props}
+      type={props.type || "button"}
       className={`focus-ring brand-gradient min-h-11 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-bold text-[#061016] shadow-glow hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-45 ${props.className || ""}`}
     />
   );
@@ -27,6 +28,7 @@ export function SecondaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElem
   return (
     <button
       {...props}
+      type={props.type || "button"}
       className={`focus-ring min-h-11 rounded-[var(--radius-control)] border border-white/10 bg-white/[0.055] px-4 py-2.5 text-sm font-semibold text-slate-100 hover:border-brand/60 hover:bg-white/[0.08] disabled:opacity-45 ${props.className || ""}`}
     />
   );
