@@ -96,6 +96,7 @@ export default {
       return fail(404, "接口不存在");
     } catch (error) {
       if (error instanceof HttpError) return fail(error.status, error.message);
+      console.error("Unhandled API error", safeErrorLog(error, { method: request.method, path: url.pathname }));
       return fail(500, "服务暂时异常，请稍后重试。");
     }
   }
@@ -169,13 +170,52 @@ async function register(request: Request, env: Env): Promise<Response> {
 async function login(request: Request, env: Env): Promise<Response> {
   const body = await readJson<{ username?: string; password?: string }>(request);
   const username = normalizeUsername(String(body.username || ""));
-  await checkRate(env, "login", username || clientIp(request), 3600, 10);
-  const user = await env.DB.prepare("SELECT * FROM users WHERE username_normalized=?1").bind(username).first<UserRow>();
-  if (!user || user.status !== "active" || user.deleted_at || !user.password_hash || !(await verifyPassword(String(body.password || ""), user.password_hash))) {
+  const password = String(body.password || "");
+  try {
+    await checkRate(env, "login", username || clientIp(request), 3600, 10);
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    console.error("Login rate-limit check failed", safeErrorLog(error, { username }));
+    throw new HttpError(500, "服务暂时异常，请稍后重试。");
+  }
+
+  let user: UserRow | null;
+  try {
+    user = await env.DB.prepare(
+      "SELECT id, username, nickname, token_version, status, role, phone_normalized, phone_verified_at, password_hash, deleted_at FROM users WHERE username_normalized=?1"
+    ).bind(username).first<UserRow>();
+  } catch (error) {
+    console.error("Login user lookup failed", safeErrorLog(error, { username }));
+    throw new HttpError(500, "服务暂时异常，请稍后重试。");
+  }
+
+  let passwordOk = false;
+  if (user?.password_hash) {
+    try {
+      passwordOk = await verifyPassword(password, user.password_hash);
+    } catch (error) {
+      console.error("Login password verification failed", safeErrorLog(error, { user_id: user.id, hash_prefix: user.password_hash.slice(0, 18) }));
+      throw new HttpError(500, "服务暂时异常，请稍后重试。");
+    }
+  }
+  if (!user || user.status !== "active" || user.deleted_at || !user.password_hash || !passwordOk) {
     throw new HttpError(401, "用户名或密码不正确");
   }
-  await env.DB.prepare("UPDATE users SET last_login_at=CURRENT_TIMESTAMP WHERE id=?1").bind(user.id).run();
-  const token = await createToken(env, user.id, user.token_version || 1);
+
+  try {
+    await env.DB.prepare("UPDATE users SET last_login_at=CURRENT_TIMESTAMP WHERE id=?1").bind(user.id).run();
+  } catch (error) {
+    console.error("Login last_login_at update failed", safeErrorLog(error, { user_id: user.id }));
+    throw new HttpError(500, "服务暂时异常，请稍后重试。");
+  }
+
+  let token: string;
+  try {
+    token = await createToken(env, user.id, Number(user.token_version || 1));
+  } catch (error) {
+    console.error("Login token signing failed", safeErrorLog(error, { user_id: user.id, token_version: user.token_version }));
+    throw new HttpError(500, "服务暂时异常，请稍后重试。");
+  }
   return ok({ access_token: token, token_type: "bearer", user: publicUser(user) });
 }
 
@@ -1841,6 +1881,15 @@ function idFromPath(pathname: string, message: string): number { const id = Numb
 async function readJson<T>(request: Request): Promise<T> { return (await request.json().catch(() => ({}))) as T; }
 function safeJson(value: unknown, fallback: unknown): unknown { try { return JSON.parse(String(value)); } catch { return fallback; } }
 function safeFilename(value: string): string { return value.replace(/[^\w.\-\u4e00-\u9fa5]/g, "_").slice(0, 120) || "upload.bin"; }
+function safeErrorLog(error: unknown, context: Record<string, unknown> = {}): Record<string, unknown> {
+  const err = error instanceof Error ? error : new Error(String(error));
+  return {
+    ...context,
+    name: err.name,
+    message: err.message,
+    stack: err.stack?.split("\n").slice(0, 3).join("\n")
+  };
+}
 function base64(bytes: Uint8Array): string { let s = ""; bytes.forEach((b) => s += String.fromCharCode(b)); return btoa(s); }
 function fromBase64(value: string): Uint8Array { return Uint8Array.from(atob(value), (c) => c.charCodeAt(0)); }
 function base64url(bytes: Uint8Array): string { return base64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
