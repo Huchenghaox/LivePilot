@@ -110,6 +110,10 @@ function AdminModels() {
           <Input label="图片模型" value={form.vision_model_name} onChange={(v) => setForm({ ...form, vision_model_name: v })} />
           <Input label="超时毫秒" value={String(form.timeout_ms)} onChange={(v) => setForm({ ...form, timeout_ms: Number(v) || 30000 })} />
         </div>
+        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-slate-400">
+          <div>文本模型用于开播方案和复盘报告，当前可使用 <span className="text-slate-200">glm-5.1</span>。</div>
+          <div>图片模型必须是支持图片输入的多模态/视觉模型；不要把 <span className="text-slate-200">glm-5.1</span> 填到图片模型里。</div>
+        </div>
         <label className="mt-4 flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> 启用为系统默认模型</label>
         <div className="mt-4 flex flex-wrap gap-2"><PrimaryButton onClick={save}>保存配置</PrimaryButton><SecondaryButton onClick={() => test("text")}>测试文本模型</SecondaryButton><SecondaryButton onClick={() => test("vision")}>测试图片模型</SecondaryButton></div>
       </Card>

@@ -856,22 +856,35 @@ async function dashboard(request: Request, env: Env, url: URL): Promise<Response
   const recentPlan = await env.DB.prepare("SELECT id, topic, created_at FROM preparation_plans WHERE user_id=?1 ORDER BY id DESC LIMIT 1").bind(user.id).first();
   const recentSession = await env.DB.prepare("SELECT id, title, status, created_at FROM live_sessions WHERE user_id=?1 ORDER BY id DESC LIMIT 1").bind(user.id).first();
   const recentReport = await env.DB.prepare("SELECT id, summary, created_at FROM review_reports WHERE user_id=?1 ORDER BY id DESC LIMIT 1").bind(user.id).first();
+  const streamerCount = await count("streamers");
+  const platformAccountCount = await count("platform_accounts");
+  const preparePlanCount = await count("preparation_plans");
+  const sessionCount = await count("live_sessions");
+  const reportCount = await count("review_reports");
+  const modelStatus = await dashboardModelStatus(env);
   return ok({
+    streamer_count: streamerCount,
+    platform_account_count: platformAccountCount,
+    prepare_plan_count: preparePlanCount,
+    session_count: sessionCount,
+    report_count: reportCount,
+    rule_reminder: "",
+    model_status: modelStatus,
     stats: {
-      streamer_count: await count("streamers"),
-      platform_account_count: await count("platform_accounts"),
-      preparation_plan_count: await count("preparation_plans"),
-      live_session_count: await count("live_sessions"),
-      report_count: await count("review_reports")
+      streamer_count: streamerCount,
+      platform_account_count: platformAccountCount,
+      preparation_plan_count: preparePlanCount,
+      live_session_count: sessionCount,
+      report_count: reportCount
     },
     recent_plan: recentPlan || null,
     recent_session: recentSession || null,
     recent_report: recentReport || null,
     onboarding: {
-      has_streamer: (await count("streamers")) > 0,
-      has_platform_account: (await count("platform_accounts")) > 0,
-      has_plan: (await count("preparation_plans")) > 0,
-      has_report: (await count("review_reports")) > 0
+      has_streamer: streamerCount > 0,
+      has_platform_account: platformAccountCount > 0,
+      has_plan: preparePlanCount > 0,
+      has_report: reportCount > 0
     }
   });
 }
@@ -1216,6 +1229,7 @@ async function testAdminModel(request: Request, env: Env, admin: UserRow, kind: 
       ], config);
     } else {
       if (!config.visionModel) throw new HttpError(400, "图片识别模型名称未配置。");
+      if (isKnownTextOnlyModel(config.visionModel)) throw new HttpError(400, "当前图片模型不是多模态/视觉模型。请填写支持图片输入的模型名；文本模型 glm-5.1 可以继续用于开播方案和复盘报告。");
       const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
       await recognizeScreenshotWithModel(env, png, "image/png");
     }
@@ -1236,7 +1250,28 @@ async function modelAvailability(env: Env, kind: "text" | "vision"): Promise<str
   if (!config.apiKey || !config.baseUrl) return "未配置";
   if (kind === "text" && !config.textModel) return "未配置";
   if (kind === "vision" && !config.visionModel) return "未配置";
+  if (kind === "vision" && isKnownTextOnlyModel(config.visionModel)) return "不是视觉模型";
   return "已配置";
+}
+
+async function dashboardModelStatus(env: Env): Promise<Record<string, unknown>> {
+  const config = await modelRuntimeConfig(env);
+  const textConfigured = Boolean(config.apiKey && config.baseUrl && config.textModel);
+  const imageConfigured = Boolean(config.apiKey && config.baseUrl && config.visionModel && !isKnownTextOnlyModel(config.visionModel));
+  const imageText = !config.apiKey || !config.baseUrl
+    ? "模型服务未配置。"
+    : !config.visionModel
+      ? "当前图片识别模型未配置，不影响手动录入复盘。"
+      : isKnownTextOnlyModel(config.visionModel)
+        ? `当前图片模型 ${config.visionModel} 是文本模型，不支持截图识别；请填写支持图片输入的视觉模型。手动录入复盘不受影响。`
+        : "图片识别模型已配置。";
+  return {
+    text_model_configured: textConfigured,
+    image_model_configured: imageConfigured,
+    text_model_name: config.textModel,
+    image_model_name: config.visionModel,
+    image_model_message: imageText
+  };
 }
 
 async function encryptModelKey(env: Env, value: string): Promise<{ ciphertext: string; iv: string }> {
@@ -1277,10 +1312,16 @@ function normalizeModelName(value: unknown): string {
   return name;
 }
 
+function isKnownTextOnlyModel(value: string): boolean {
+  return ["glm-5.1"].includes(normalizeModelName(value).toLowerCase());
+}
+
 function modelErrorMessage(error: unknown): string {
+  if (error instanceof HttpError) return error.message;
   if (error instanceof UpstreamModelError) {
     const status = error.details.status || 0;
     const text = modelErrorText(error.details);
+    if (/multimodal|vision|image|图片|视觉|多模态/i.test(text)) return `当前图片模型不是多模态/视觉模型。上游返回：${text}`;
     if ([401, 403].includes(status)) return `API Key无效或没有权限。上游返回：${text || status}`;
     if (status === 404) return `模型接口或模型名称不存在。上游返回：${text || status}`;
     if (status === 429) return "模型服务请求过于频繁，请稍后再试或检查服务额度。";

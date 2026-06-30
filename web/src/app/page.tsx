@@ -15,6 +15,9 @@ type Dashboard = {
   model_status?: {
     text_model_configured: boolean;
     image_model_configured: boolean;
+    text_model_name?: string;
+    image_model_name?: string;
+    image_model_message?: string;
   };
   latest_session: null | {
     id: number;
@@ -154,7 +157,7 @@ export default function HomePage() {
           </div>
           {!data.model_status?.image_model_configured ? (
             <div className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-              当前图片识别模型未配置，不会影响手动录入复盘。上传截图后如无法识别，可继续确认和填写关键数据。
+              {data.model_status?.image_model_message || "当前图片识别模型未配置，不会影响手动录入复盘。上传截图后如无法识别，可继续确认和填写关键数据。"}
             </div>
           ) : null}
         </Card>
