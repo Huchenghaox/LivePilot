@@ -9,6 +9,7 @@ const password = process.env.ADMIN_PASSWORD || process.argv[3] || "";
 const nickname = (process.env.ADMIN_NICKNAME || process.argv[4] || username || "LivePilot管理员").trim();
 const phone = normalizePhone(process.env.ADMIN_PHONE || "");
 const useLocal = process.env.ADMIN_LOCAL === "true" || process.argv.includes("--local");
+const passwordHashIterations = 60000;
 
 if (!username || !/^[a-z][a-z0-9_]{3,31}$/.test(username)) {
   throw new Error("请设置 ADMIN_USERNAME，4-32位，首位字母，只能包含字母、数字和下划线。");
@@ -56,8 +57,8 @@ try {
 
 function hashPassword(value) {
   const salt = randomBytes(16);
-  const digest = pbkdf2Sync(value, salt, 210000, 32, "sha256");
-  return `pbkdf2_sha256$210000$${salt.toString("base64")}$${digest.toString("base64")}`;
+  const digest = pbkdf2Sync(value, salt, passwordHashIterations, 32, "sha256");
+  return `pbkdf2_sha256$${passwordHashIterations}$${salt.toString("base64")}$${digest.toString("base64")}`;
 }
 
 function normalizeUsername(value) {

@@ -24,6 +24,7 @@ type ModelRuntimeConfig = { provider: string; baseUrl: string; apiKey: string; t
 
 const jsonHeaders = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 const reservedUsernames = new Set(["admin", "administrator", "root", "system", "support", "livepilot", "api", "null", "undefined"]);
+const passwordHashIterations = 60000;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -191,12 +192,7 @@ async function login(request: Request, env: Env): Promise<Response> {
 
   let passwordOk = false;
   if (user?.password_hash) {
-    try {
-      passwordOk = await verifyPassword(password, user.password_hash);
-    } catch (error) {
-      console.error("Login password verification failed", safeErrorLog(error, { user_id: user.id, hash_prefix: user.password_hash.slice(0, 18) }));
-      throw new HttpError(500, "服务暂时异常，请稍后重试。");
-    }
+    passwordOk = await verifyPassword(password, user.password_hash);
   }
   if (!user || user.status !== "active" || user.deleted_at || !user.password_hash || !passwordOk) {
     throw new HttpError(401, "用户名或密码不正确");
@@ -1805,15 +1801,21 @@ function publicUser(user: AuthUser): Record<string, unknown> {
 
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const digest = await pbkdf2(password, salt, 210000);
-  return `pbkdf2_sha256$210000$${base64(salt)}$${base64(digest)}`;
+  const digest = await pbkdf2(password, salt, passwordHashIterations);
+  return `pbkdf2_sha256$${passwordHashIterations}$${base64(salt)}$${base64(digest)}`;
 }
 
 async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [algo, iterations, salt, digest] = stored.split("$");
-  if (algo !== "pbkdf2_sha256") return false;
-  const actual = await pbkdf2(password, fromBase64(salt), Number(iterations));
-  return timingSafeEqual(base64(actual), digest);
+  try {
+    const [algo, iterations, salt, digest] = stored.split("$");
+    const count = Number(iterations);
+    if (algo !== "pbkdf2_sha256" || !Number.isFinite(count) || count < 10000 || !salt || !digest) return false;
+    const actual = await pbkdf2(password, fromBase64(salt), count);
+    return timingSafeEqual(base64(actual), digest);
+  } catch (error) {
+    console.error("Password hash verification failed", safeErrorLog(error, { hash_prefix: stored.slice(0, 18) }));
+    return false;
+  }
 }
 
 async function pbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
