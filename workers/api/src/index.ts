@@ -1113,8 +1113,8 @@ async function modelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
       provider: stored.provider_name || "openai-compatible",
       baseUrl: stored.base_url || "",
       apiKey: (await decryptModelKey(env, stored.api_key_ciphertext, stored.api_key_iv)).trim(),
-      textModel: String(stored.text_model_name || "").trim(),
-      visionModel: String(stored.vision_model_name || "").trim(),
+      textModel: normalizeModelName(stored.text_model_name),
+      visionModel: normalizeModelName(stored.vision_model_name),
       timeoutMs: Number(stored.timeout_ms || 30000),
       source: "admin"
     };
@@ -1124,8 +1124,8 @@ async function modelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
       provider: env.MODEL_PROVIDER || "openai-compatible",
       baseUrl: (env.MODEL_BASE_URL || "").trim(),
       apiKey: (env.MODEL_API_KEY || "").trim(),
-      textModel: (env.MODEL_TEXT_NAME || "").trim(),
-      visionModel: (env.MODEL_VISION_NAME || "").trim(),
+      textModel: normalizeModelName(env.MODEL_TEXT_NAME),
+      visionModel: normalizeModelName(env.MODEL_VISION_NAME),
       timeoutMs: Number(env.MODEL_TIMEOUT_MS || 30000),
       source: "secret"
     };
@@ -1186,8 +1186,8 @@ async function saveAdminModelConfig(request: Request, env: Env, admin: UserRow):
     cipher,
     iv,
     lastFour,
-    String(body.text_model_name || existing?.text_model_name || "").trim(),
-    String(body.vision_model_name || existing?.vision_model_name || "").trim(),
+    normalizeModelName(body.text_model_name || existing?.text_model_name || ""),
+    normalizeModelName(body.vision_model_name || existing?.vision_model_name || ""),
     Number(body.timeout_ms || existing?.timeout_ms || 30000),
     body.enabled === true ? 1 : existing?.enabled || 0,
     admin.id
@@ -1268,6 +1268,13 @@ function assertSafeModelBaseUrl(value: string, env: Env): void {
   const host = url.hostname.toLowerCase();
   if (["localhost", "127.0.0.1", "0.0.0.0", "::1"].includes(host) || host.endsWith(".local")) throw new HttpError(400, "Base URL不能指向本机或内网地址。");
   if (/^(10|127|169\.254|192\.168)\./.test(host) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) throw new HttpError(400, "Base URL不能指向内网地址。");
+}
+
+function normalizeModelName(value: unknown): string {
+  const name = String(value || "").trim();
+  const lower = name.toLowerCase();
+  if (lower === "glm5.1" || lower === "glm-5.1") return "glm-5.1";
+  return name;
 }
 
 function modelErrorMessage(error: unknown): string {
