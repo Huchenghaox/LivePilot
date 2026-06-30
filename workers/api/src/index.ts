@@ -21,6 +21,7 @@ type Env = {
 type AuthUser = { id: number; username: string; nickname: string; token_version?: number; status?: string; role?: string };
 type UserRow = AuthUser & { phone_normalized?: string; phone_verified_at?: string; password_hash?: string; deleted_at?: string };
 type ModelRuntimeConfig = { provider: string; baseUrl: string; apiKey: string; textModel: string; visionModel: string; timeoutMs: number; source: "admin" | "secret" | "mock" | "none" };
+type UpstreamModelErrorDetails = { status?: number; body?: string; code?: string; message?: string };
 
 const jsonHeaders = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 const reservedUsernames = new Set(["admin", "administrator", "root", "system", "support", "livepilot", "api", "null", "undefined"]);
@@ -1074,13 +1075,27 @@ async function callOpenAIJson(env: Env, model: string, messages: any[], config?:
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), runtime.timeoutMs);
   try {
-    const response = await fetch(`${runtime.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+    const body = { model, messages, response_format: { type: "json_object" }, temperature: 0.2 };
+    let response = await fetch(`${runtime.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${runtime.apiKey}` },
-      body: JSON.stringify({ model, messages, response_format: { type: "json_object" }, temperature: 0.2 }),
+      body: JSON.stringify(body),
       signal: controller.signal
     });
-    if (!response.ok) throw new Error(`模型连接失败：${response.status}`);
+    if (!response.ok && response.status === 400) {
+      const firstError = await modelUpstreamError(response);
+      if (modelErrorText(firstError).toLowerCase().includes("response_format")) {
+        response = await fetch(`${runtime.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${runtime.apiKey}` },
+          body: JSON.stringify({ ...body, response_format: undefined }),
+          signal: controller.signal
+        });
+      } else {
+        throw new UpstreamModelError(firstError);
+      }
+    }
+    if (!response.ok) throw new UpstreamModelError(await modelUpstreamError(response));
     const data = await response.json() as any;
     const text = data.choices?.[0]?.message?.content;
     if (!text) throw new Error("模型返回为空");
@@ -1097,9 +1112,9 @@ async function modelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
     return {
       provider: stored.provider_name || "openai-compatible",
       baseUrl: stored.base_url || "",
-      apiKey: await decryptModelKey(env, stored.api_key_ciphertext, stored.api_key_iv),
-      textModel: stored.text_model_name || "",
-      visionModel: stored.vision_model_name || "",
+      apiKey: (await decryptModelKey(env, stored.api_key_ciphertext, stored.api_key_iv)).trim(),
+      textModel: String(stored.text_model_name || "").trim(),
+      visionModel: String(stored.vision_model_name || "").trim(),
       timeoutMs: Number(stored.timeout_ms || 30000),
       source: "admin"
     };
@@ -1107,10 +1122,10 @@ async function modelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
   if (env.MODEL_API_KEY || env.MODEL_BASE_URL || env.MODEL_TEXT_NAME || env.MODEL_VISION_NAME) {
     return {
       provider: env.MODEL_PROVIDER || "openai-compatible",
-      baseUrl: env.MODEL_BASE_URL || "",
-      apiKey: env.MODEL_API_KEY || "",
-      textModel: env.MODEL_TEXT_NAME || "",
-      visionModel: env.MODEL_VISION_NAME || "",
+      baseUrl: (env.MODEL_BASE_URL || "").trim(),
+      apiKey: (env.MODEL_API_KEY || "").trim(),
+      textModel: (env.MODEL_TEXT_NAME || "").trim(),
+      visionModel: (env.MODEL_VISION_NAME || "").trim(),
       timeoutMs: Number(env.MODEL_TIMEOUT_MS || 30000),
       source: "secret"
     };
@@ -1153,7 +1168,7 @@ async function saveAdminModelConfig(request: Request, env: Env, admin: UserRow):
   const baseUrl = String(body.base_url || "").trim();
   assertSafeModelBaseUrl(baseUrl, env);
   const existing = Number(body.id || 0) ? await env.DB.prepare("SELECT * FROM system_model_configs WHERE id=?1").bind(Number(body.id)).first<any>() : null;
-  const rawKey = String(body.api_key || "");
+  const rawKey = String(body.api_key || "").trim();
   let cipher = existing?.api_key_ciphertext || "";
   let iv = existing?.api_key_iv || "";
   let lastFour = existing?.api_key_last_four || "";
@@ -1166,13 +1181,13 @@ async function saveAdminModelConfig(request: Request, env: Env, admin: UserRow):
   if (!cipher) throw new HttpError(400, "请填写模型 API Key。");
   if (body.enabled === true) await env.DB.prepare("UPDATE system_model_configs SET enabled=0 WHERE enabled=1").run();
   const values = [
-    String(body.provider_name || existing?.provider_name || "openai-compatible"),
+    String(body.provider_name || existing?.provider_name || "openai-compatible").trim(),
     baseUrl,
     cipher,
     iv,
     lastFour,
-    String(body.text_model_name || existing?.text_model_name || ""),
-    String(body.vision_model_name || existing?.vision_model_name || ""),
+    String(body.text_model_name || existing?.text_model_name || "").trim(),
+    String(body.vision_model_name || existing?.vision_model_name || "").trim(),
     Number(body.timeout_ms || existing?.timeout_ms || 30000),
     body.enabled === true ? 1 : existing?.enabled || 0,
     admin.id
@@ -1256,12 +1271,53 @@ function assertSafeModelBaseUrl(value: string, env: Env): void {
 }
 
 function modelErrorMessage(error: unknown): string {
+  if (error instanceof UpstreamModelError) {
+    const status = error.details.status || 0;
+    const text = modelErrorText(error.details);
+    if ([401, 403].includes(status)) return `API Key无效或没有权限。上游返回：${text || status}`;
+    if (status === 404) return `模型接口或模型名称不存在。上游返回：${text || status}`;
+    if (status === 429) return "模型服务请求过于频繁，请稍后再试或检查服务额度。";
+    if (status >= 500) return `模型服务暂时异常。上游返回：${text || status}`;
+    if (/model/i.test(text)) return `模型名称不存在或当前账号无权使用。上游返回：${text}`;
+    if (/key|token|auth|permission|unauthorized|forbidden/i.test(text)) return `API Key无效或没有权限。上游返回：${text}`;
+    return `模型连接失败。上游返回：${text || status}`;
+  }
   const message = error instanceof Error ? error.message : "模型测试失败。";
   if (/401|403|API Key|authorization/i.test(message)) return "API Key无效或没有权限。";
   if (/404|model/i.test(message)) return "模型名称不存在或当前账号无权使用。";
   if (/abort|timeout|timed/i.test(message)) return "模型请求超时，请检查网络或调大超时时间。";
   if (/JSON|format|返回/.test(message)) return "模型返回格式异常，未能解析为结构化JSON。";
   return "模型连接失败，请检查Base URL、模型名称和服务状态。";
+}
+
+class UpstreamModelError extends Error {
+  details: UpstreamModelErrorDetails;
+
+  constructor(details: UpstreamModelErrorDetails) {
+    super(`Upstream model error ${details.status || ""}: ${modelErrorText(details)}`);
+    this.name = "UpstreamModelError";
+    this.details = details;
+  }
+}
+
+async function modelUpstreamError(response: Response): Promise<UpstreamModelErrorDetails> {
+  const text = await response.text().catch(() => "");
+  const safeBody = text.slice(0, 500);
+  try {
+    const parsed = JSON.parse(safeBody);
+    const err = parsed.error || parsed;
+    return {
+      status: response.status,
+      code: String(err.code || parsed.code || ""),
+      message: String(err.message || parsed.message || safeBody || "")
+    };
+  } catch {
+    return { status: response.status, body: safeBody };
+  }
+}
+
+function modelErrorText(details: UpstreamModelErrorDetails): string {
+  return String(details.message || details.code || details.body || "").replace(/\s+/g, " ").slice(0, 180);
 }
 
 async function audit(env: Env, admin: UserRow, action: string, targetType: string, targetId: string, result = "success", metadata: Record<string, unknown> = {}, request?: Request): Promise<void> {

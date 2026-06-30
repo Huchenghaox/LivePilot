@@ -72,13 +72,13 @@ function AdminDashboard() {
 
 function AdminModels() {
   const [active, setActive] = useState<Record<string, unknown> | null>(null);
-  const [form, setForm] = useState({ provider_name: "openai-compatible", base_url: "", api_key: "", text_model_name: "", vision_model_name: "", timeout_ms: 30000, enabled: true });
+  const [form, setForm] = useState({ id: 0, provider_name: "openai-compatible", base_url: "", api_key: "", text_model_name: "", vision_model_name: "", timeout_ms: 30000, enabled: true });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   async function load() {
     const res = await apiFetch<{ active: Record<string, unknown> | null }>("/api/admin/models");
     setActive(res.active);
-    if (res.active) setForm((old) => ({ ...old, provider_name: String(res.active?.provider_name || old.provider_name), base_url: String(res.active?.base_url || ""), text_model_name: String(res.active?.text_model_name || ""), vision_model_name: String(res.active?.vision_model_name || ""), timeout_ms: Number(res.active?.timeout_ms || 30000), enabled: Boolean(res.active?.enabled) }));
+    if (res.active) setForm((old) => ({ ...old, id: Number(res.active?.id || 0), provider_name: String(res.active?.provider_name || old.provider_name), base_url: String(res.active?.base_url || ""), text_model_name: String(res.active?.text_model_name || ""), vision_model_name: String(res.active?.vision_model_name || ""), timeout_ms: Number(res.active?.timeout_ms || 30000), enabled: Boolean(res.active?.enabled) }));
   }
   useEffect(() => { load().catch((err) => setError(err.message)); }, []);
   async function save() {
