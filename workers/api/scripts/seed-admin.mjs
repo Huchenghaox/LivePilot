@@ -30,6 +30,7 @@ ON CONFLICT(username_normalized) DO UPDATE SET
   phone_verified_at=COALESCE(excluded.phone_verified_at, users.phone_verified_at),
   status='active',
   role='admin',
+  deleted_at=NULL,
   token_version=users.token_version+1,
   updated_at=CURRENT_TIMESTAMP;
 `;
