@@ -71,53 +71,199 @@ function AdminDashboard() {
 }
 
 function AdminModels() {
-  const [active, setActive] = useState<Record<string, unknown> | null>(null);
-  const [form, setForm] = useState({ id: 0, provider_name: "openai-compatible", base_url: "", api_key: "", text_model_name: "", vision_model_name: "", timeout_ms: 30000, enabled: true });
+  type Provider = { id: number; name: string; base_url: string; api_key_masked?: string; api_key_last_four?: string; enabled: boolean; last_test_status?: string; last_test_message?: string; last_tested_at?: string; models?: { model_id: string; capability: string }[] };
+  type Assignments = { default_text_provider_id: number | null; default_text_model_name: string; default_vision_provider_id: number | null; default_vision_model_name: string; report_provider_id?: number | null; report_model_name?: string; preparation_provider_id?: number | null; preparation_model_name?: string };
+  const emptyProvider = { id: 0, name: "JintouAPI", base_url: "https://token.naitg.cn/v1", api_key: "", enabled: true };
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [assignments, setAssignments] = useState<Assignments>({ default_text_provider_id: null, default_text_model_name: "", default_vision_provider_id: null, default_vision_model_name: "" });
+  const [providerForm, setProviderForm] = useState(emptyProvider);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+
   async function load() {
-    const res = await apiFetch<{ active: Record<string, unknown> | null }>("/api/admin/models");
-    setActive(res.active);
-    if (res.active) setForm((old) => ({ ...old, id: Number(res.active?.id || 0), provider_name: String(res.active?.provider_name || old.provider_name), base_url: String(res.active?.base_url || ""), text_model_name: String(res.active?.text_model_name || ""), vision_model_name: String(res.active?.vision_model_name || ""), timeout_ms: Number(res.active?.timeout_ms || 30000), enabled: Boolean(res.active?.enabled) }));
+    const res = await apiFetch<{ providers: Provider[]; assignments: Assignments }>("/api/admin/models");
+    setProviders(res.providers || []);
+    setAssignments(res.assignments || { default_text_provider_id: null, default_text_model_name: "", default_vision_provider_id: null, default_vision_model_name: "" });
   }
   useEffect(() => { load().catch((err) => setError(err.message)); }, []);
-  async function save() {
+
+  async function run(label: string, action: () => Promise<void>) {
     setError(""); setMessage("");
+    setBusy(label);
     try {
-      const res = await apiFetch<Record<string, unknown>>("/api/admin/models", { method: "PUT", body: JSON.stringify(form) });
-      setActive(res); setForm((old) => ({ ...old, api_key: "" })); setMessage("模型配置已保存。");
-    } catch (err) { setError(err instanceof Error ? err.message : "保存失败"); }
+      await action();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "操作失败");
+    } finally {
+      setBusy("");
+    }
   }
-  async function test(kind: "text" | "vision") {
-    setError(""); setMessage("");
-    try {
-      const res = await apiFetch<{ message: string }>(`/api/admin/models/test-${kind}`, { method: "POST", body: "{}" });
+
+  async function saveProvider() {
+    await run("save-provider", async () => {
+      const path = providerForm.id ? `/api/admin/model-providers/${providerForm.id}` : "/api/admin/model-providers";
+      await apiFetch(path, { method: providerForm.id ? "PUT" : "POST", body: JSON.stringify(providerForm) });
+      setProviderForm(emptyProvider);
+      setMessage("模型源已保存。");
+      await load();
+    });
+  }
+
+  async function saveAssignments() {
+    await run("save-assignments", async () => {
+      await apiFetch("/api/admin/model-assignments", { method: "PUT", body: JSON.stringify(assignments) });
+      setMessage("系统默认模型已保存。");
+      await load();
+    });
+  }
+
+  async function testProvider(id: number) {
+    await run(`test-provider-${id}`, async () => {
+      const res = await apiFetch<{ message: string }>(`/api/admin/model-providers/${id}/test`, { method: "POST", body: "{}" });
       setMessage(res.message);
       await load();
-    } catch (err) { setError(err instanceof Error ? err.message : "测试失败"); }
+    });
   }
+
+  async function syncModels(id: number) {
+    await run(`sync-${id}`, async () => {
+      const res = await apiFetch<{ message: string }>(`/api/admin/model-providers/${id}/sync-models`, { method: "POST", body: "{}" });
+      setMessage(res.message);
+      await load();
+    });
+  }
+
+  async function disableProvider(id: number) {
+    if (!window.confirm("确定停用这个模型源？停用后使用它的默认模型会失效。")) return;
+    await run(`disable-${id}`, async () => {
+      await apiFetch(`/api/admin/model-providers/${id}`, { method: "DELETE" });
+      setMessage("模型源已停用。");
+      await load();
+    });
+  }
+
+  async function testAssigned(kind: "text" | "vision") {
+    await run(`test-${kind}`, async () => {
+      const res = await apiFetch<{ message: string }>(`/api/admin/model-assignments/test-${kind}`, { method: "POST", body: "{}" });
+      setMessage(res.message);
+    });
+  }
+
+  function modelsFor(providerId: number | null | undefined, capability?: string) {
+    const provider = providers.find((item) => item.id === Number(providerId || 0));
+    const models = provider?.models || [];
+    return capability ? models.filter((item) => item.capability === capability || item.capability === "unknown") : models;
+  }
+
+  function editProvider(provider: Provider) {
+    setProviderForm({ id: provider.id, name: provider.name, base_url: provider.base_url, api_key: "", enabled: provider.enabled });
+    setMessage("正在编辑模型源，API Key 留空表示继续使用已保存的 Key。");
+  }
+
   return (
     <div className="grid gap-4">
       {error ? <StatusMessage type="error" text={error} /> : null}
       {message ? <StatusMessage type="success" text={message} /> : null}
       <Card>
-        <h2 className="mb-4 text-lg font-bold">系统模型配置</h2>
+        <h2 className="mb-2 text-lg font-bold">模型源管理</h2>
+        <p className="mb-4 text-sm leading-6 text-slate-400">先保存模型源，只验证 Base URL 和 API Key；再拉取模型列表。API Key 只显示后四位，不会回显明文。</p>
         <div className="grid gap-3 md:grid-cols-2">
-          <Input label="Provider" value={form.provider_name} onChange={(v) => setForm({ ...form, provider_name: v })} />
-          <Input label="Base URL" value={form.base_url} onChange={(v) => setForm({ ...form, base_url: v })} />
-          <Input label="API Key" type="password" placeholder={active?.api_key_masked ? String(active.api_key_masked) : "只在修改时填写"} value={form.api_key} onChange={(v) => setForm({ ...form, api_key: v })} />
-          <Input label="文本模型" value={form.text_model_name} onChange={(v) => setForm({ ...form, text_model_name: v })} />
-          <Input label="图片模型" value={form.vision_model_name} onChange={(v) => setForm({ ...form, vision_model_name: v })} />
-          <Input label="超时毫秒" value={String(form.timeout_ms)} onChange={(v) => setForm({ ...form, timeout_ms: Number(v) || 30000 })} />
+          <Input label="模型源名称" value={providerForm.name} onChange={(v) => setProviderForm({ ...providerForm, name: v })} />
+          <Input label="Base URL" value={providerForm.base_url} onChange={(v) => setProviderForm({ ...providerForm, base_url: v })} />
+          <Input label="API Key" type="password" placeholder={providerForm.id ? "留空表示继续使用已保存的 Key" : "只会加密保存在服务端"} value={providerForm.api_key} onChange={(v) => setProviderForm({ ...providerForm, api_key: v })} />
+          <label className="mt-7 flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={providerForm.enabled} onChange={(e) => setProviderForm({ ...providerForm, enabled: e.target.checked })} /> 启用这个模型源</label>
         </div>
-        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-slate-400">
-          <div>文本模型用于开播方案和复盘报告，当前可使用 <span className="text-slate-200">glm-5.1</span>。</div>
-          <div>图片模型必须是支持图片输入的多模态/视觉模型；不要把 <span className="text-slate-200">glm-5.1</span> 填到图片模型里。</div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <PrimaryButton disabled={Boolean(busy)} onClick={saveProvider}>{busy === "save-provider" ? "正在保存..." : providerForm.id ? "保存模型源" : "新增模型源"}</PrimaryButton>
+          {providerForm.id ? <SecondaryButton disabled={Boolean(busy)} onClick={() => setProviderForm(emptyProvider)}>取消编辑</SecondaryButton> : null}
         </div>
-        <label className="mt-4 flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} /> 启用为系统默认模型</label>
-        <div className="mt-4 flex flex-wrap gap-2"><PrimaryButton onClick={save}>保存配置</PrimaryButton><SecondaryButton onClick={() => test("text")}>测试文本模型</SecondaryButton><SecondaryButton onClick={() => test("vision")}>测试图片模型</SecondaryButton></div>
+        <div className="mt-5 grid gap-3">
+          {providers.length ? providers.map((provider) => (
+            <div key={provider.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="font-bold text-slate-100">{provider.name} <span className="ml-2 text-xs text-slate-500">Key {provider.api_key_masked || "未保存"}</span></div>
+                  <div className="mt-1 break-all text-xs text-slate-500">{provider.base_url}</div>
+                  <div className="mt-2 text-xs text-slate-400">状态：{provider.enabled ? "启用" : "停用"} · 最近测试：{provider.last_test_message || "未测试"}</div>
+                  {provider.models?.length ? <div className="mt-2 text-xs text-brand">已拉取 {provider.models.length} 个模型</div> : null}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <SecondaryButton disabled={Boolean(busy)} onClick={() => editProvider(provider)}>编辑</SecondaryButton>
+                  <SecondaryButton disabled={Boolean(busy)} onClick={() => testProvider(provider.id)}>{busy === `test-provider-${provider.id}` ? "测试中..." : "测试连接"}</SecondaryButton>
+                  <SecondaryButton disabled={Boolean(busy)} onClick={() => syncModels(provider.id)}>{busy === `sync-${provider.id}` ? "拉取中..." : "拉取模型"}</SecondaryButton>
+                  <SecondaryButton disabled={Boolean(busy)} onClick={() => disableProvider(provider.id)}>停用</SecondaryButton>
+                </div>
+              </div>
+            </div>
+          )) : <StatusMessage type="empty" text="还没有模型源。先新增一个 Provider，再设置系统默认模型。" />}
+        </div>
       </Card>
-      {active ? <Card><pre className="whitespace-pre-wrap text-sm text-slate-300">{JSON.stringify(active, null, 2)}</pre></Card> : null}
+      <Card>
+        <h2 className="mb-2 text-lg font-bold">系统默认模型</h2>
+        <p className="mb-4 text-sm leading-6 text-slate-400">文本模型用于开播方案、复盘报告、文案生成和总结分析。视觉模型只用于截图识别和图片分析；未配置视觉模型时，不影响文本功能。</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="mb-3 text-sm font-bold text-brand">默认文本模型</div>
+            <ModelProviderSelect value={assignments.default_text_provider_id} providers={providers} onChange={(id) => setAssignments({ ...assignments, default_text_provider_id: id, default_text_model_name: "" })} />
+            <ModelNameSelect
+              value={assignments.default_text_model_name}
+              models={modelsFor(assignments.default_text_provider_id, "text")}
+              placeholder="例如 glm-5.1"
+              onChange={(value) => setAssignments({ ...assignments, default_text_model_name: value })}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <SecondaryButton disabled={Boolean(busy)} onClick={() => testAssigned("text")}>{busy === "test-text" ? "测试中..." : "测试文本模型"}</SecondaryButton>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="mb-3 text-sm font-bold text-brand">默认视觉模型</div>
+            <ModelProviderSelect value={assignments.default_vision_provider_id} providers={providers} onChange={(id) => setAssignments({ ...assignments, default_vision_provider_id: id, default_vision_model_name: "" })} />
+            <ModelNameSelect
+              value={assignments.default_vision_model_name}
+              models={modelsFor(assignments.default_vision_provider_id, "vision")}
+              placeholder="例如 gpt-4o、qwen-vl-plus"
+              onChange={(value) => setAssignments({ ...assignments, default_vision_model_name: value })}
+            />
+            <div className="mt-3 rounded-xl border border-amber-400/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">
+              如果当前 Provider 没有视觉模型，请保持为空。不要把 glm-5.1 填到视觉模型里。
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <SecondaryButton disabled={Boolean(busy || !assignments.default_vision_model_name)} onClick={() => testAssigned("vision")}>{busy === "test-vision" ? "测试中..." : "测试视觉模型"}</SecondaryButton>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <PrimaryButton disabled={Boolean(busy)} onClick={saveAssignments}>{busy === "save-assignments" ? "正在保存..." : "保存系统默认模型"}</PrimaryButton>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function ModelProviderSelect({ value, providers, onChange }: { value: number | null | undefined; providers: { id: number; name: string; enabled: boolean }[]; onChange: (id: number | null) => void }) {
+  return (
+    <label className="mb-3 grid gap-1 text-sm text-slate-400">
+      <span>Provider</span>
+      <select className="input-dark" value={value || ""} onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}>
+        <option value="">不配置</option>
+        {providers.filter((item) => item.enabled).map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function ModelNameSelect({ value, models, placeholder, onChange }: { value: string; models: { model_id: string; capability: string }[]; placeholder: string; onChange: (value: string) => void }) {
+  return (
+    <div className="grid gap-2">
+      <label className="grid gap-1 text-sm text-slate-400">
+        <span>模型</span>
+        <input className="input-dark" list={`models-${placeholder}`} placeholder={placeholder} value={value} onChange={(event) => onChange(event.target.value)} />
+      </label>
+      <datalist id={`models-${placeholder}`}>
+        {models.map((model) => <option key={model.model_id} value={model.model_id}>{model.model_id} · {model.capability}</option>)}
+      </datalist>
+      {models.length ? <div className="text-xs text-slate-500">可从下拉建议中选择，也可以手动输入模型名。</div> : <div className="text-xs text-slate-500">还没有模型列表，请先在模型源中“拉取模型”。</div>}
     </div>
   );
 }

@@ -135,6 +135,37 @@ async function main() {
   const textTest = await request("/api/admin/models/test-text", { method: "POST", headers: auth(adminToken), body: "{}" });
   assert(textTest.status === "success", "admin text model test should work in local mock mode");
 
+  const provider = await request("/api/admin/model-providers", {
+    method: "POST",
+    headers: auth(adminToken),
+    body: JSON.stringify({
+      name: `SmokeProvider${stamp}`,
+      base_url: "https://api.example.com",
+      api_key: `provider-key-${stamp}`,
+      enabled: true
+    })
+  });
+  assert(provider.item?.id && provider.item.base_url.endsWith("/v1"), "provider should be saved and normalize /v1");
+  assert(!JSON.stringify(provider).includes(`provider-key-${stamp}`), "provider key should not be returned");
+  const providerTest = await request(`/api/admin/model-providers/${provider.item.id}/test`, { method: "POST", headers: auth(adminToken), body: "{}" });
+  assert(providerTest.status === "success", "provider connection test should work in local mock mode");
+  const synced = await request(`/api/admin/model-providers/${provider.item.id}/sync-models`, { method: "POST", headers: auth(adminToken), body: "{}" });
+  assert(synced.items?.some((item) => item.id === "qwen-vl-plus" && item.capability === "vision"), "provider sync should infer vision capability");
+  await request("/api/admin/model-assignments", {
+    method: "PUT",
+    headers: auth(adminToken),
+    body: JSON.stringify({
+      default_text_provider_id: provider.item.id,
+      default_text_model_name: "glm-5.1",
+      default_vision_provider_id: provider.item.id,
+      default_vision_model_name: "qwen-vl-plus"
+    })
+  });
+  const assignedText = await request("/api/admin/model-assignments/test-text", { method: "POST", headers: auth(adminToken), body: "{}" });
+  assert(assignedText.status === "success", "assigned text model test should work");
+  const assignedVision = await request("/api/admin/model-assignments/test-vision", { method: "POST", headers: auth(adminToken), body: "{}" });
+  assert(assignedVision.status === "success", "assigned vision model test should work");
+
   const createdRule = await request("/api/admin/rules", {
     method: "POST",
     headers: auth(adminToken),

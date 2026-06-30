@@ -21,6 +21,8 @@ type Env = {
 type AuthUser = { id: number; username: string; nickname: string; token_version?: number; status?: string; role?: string };
 type UserRow = AuthUser & { phone_normalized?: string; phone_verified_at?: string; password_hash?: string; deleted_at?: string };
 type ModelRuntimeConfig = { provider: string; baseUrl: string; apiKey: string; textModel: string; visionModel: string; timeoutMs: number; source: "admin" | "secret" | "mock" | "none" };
+type ModelCallConfig = { provider: string; baseUrl: string; apiKey: string; model: string; timeoutMs: number; source: "admin" | "secret" | "mock" };
+type ModelPurpose = "text" | "vision" | "report" | "preparation";
 type UpstreamModelErrorDetails = { status?: number; body?: string; code?: string; message?: string };
 
 const jsonHeaders = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
@@ -254,10 +256,20 @@ async function changePassword(request: Request, env: Env): Promise<Response> {
 async function adminRouter(request: Request, env: Env, url: URL): Promise<Response> {
   const admin = await requireAdmin(request, env);
   if (request.method === "GET" && url.pathname === "/api/admin/dashboard") return await adminDashboard(env);
-  if (request.method === "GET" && url.pathname === "/api/admin/models") return ok({ items: (await listModelConfigs(env)).map(maskModelConfig), active: maskModelConfig(await activeStoredModelConfig(env)) });
+  if (request.method === "GET" && url.pathname === "/api/admin/models") return await getAdminModels(env);
   if (request.method === "PUT" && url.pathname === "/api/admin/models") return await saveAdminModelConfig(request, env, admin);
   if (request.method === "POST" && url.pathname === "/api/admin/models/test-text") return await testAdminModel(request, env, admin, "text");
   if (request.method === "POST" && url.pathname === "/api/admin/models/test-vision") return await testAdminModel(request, env, admin, "vision");
+  if (request.method === "GET" && url.pathname === "/api/admin/model-providers") return ok({ items: await listModelProviders(env) });
+  if (request.method === "POST" && url.pathname === "/api/admin/model-providers") return await createModelProvider(request, env, admin);
+  if (request.method === "PUT" && /^\/api\/admin\/model-providers\/\d+$/.test(url.pathname)) return await updateModelProvider(request, env, admin, Number(url.pathname.split("/")[4]));
+  if (request.method === "DELETE" && /^\/api\/admin\/model-providers\/\d+$/.test(url.pathname)) return await deleteModelProvider(request, env, admin, Number(url.pathname.split("/")[4]));
+  if (request.method === "POST" && /^\/api\/admin\/model-providers\/\d+\/test$/.test(url.pathname)) return await testModelProvider(request, env, admin, Number(url.pathname.split("/")[4]));
+  if (request.method === "POST" && /^\/api\/admin\/model-providers\/\d+\/sync-models$/.test(url.pathname)) return await syncProviderModels(request, env, admin, Number(url.pathname.split("/")[4]));
+  if (request.method === "GET" && url.pathname === "/api/admin/model-assignments") return ok(await getModelAssignments(env));
+  if (request.method === "PUT" && url.pathname === "/api/admin/model-assignments") return await saveModelAssignments(request, env, admin);
+  if (request.method === "POST" && url.pathname === "/api/admin/model-assignments/test-text") return await testAssignedModel(request, env, admin, "text");
+  if (request.method === "POST" && url.pathname === "/api/admin/model-assignments/test-vision") return await testAssignedModel(request, env, admin, "vision");
   if (request.method === "GET" && url.pathname === "/api/admin/users") return await adminListUsers(env, url);
   if (request.method === "GET" && /^\/api\/admin\/users\/\d+$/.test(url.pathname)) return await adminGetUser(env, Number(url.pathname.split("/")[4]));
   if (request.method === "PATCH" && /^\/api\/admin\/users\/\d+\/status$/.test(url.pathname)) return await adminUpdateUserStatus(request, env, admin, Number(url.pathname.split("/")[4]));
@@ -582,18 +594,32 @@ async function createPreparePlan(request: Request, env: Env): Promise<Response> 
   if (accountId) await ownedPlatformAccount(env, user.id, accountId);
   const topic = String(body.topic || "").trim();
   if (!topic) throw new HttpError(400, "请先填写下一场直播主题。");
-  const plan = await generatePreparePlanContent(env, streamer, {
-    topic,
-    duration_minutes: Number(body.duration_minutes || 90),
-    goal: String(body.goal || "留得更久"),
-    live_form: String(body.live_form || "评论互动"),
-    has_cohost: Boolean(body.has_cohost),
-    has_ecommerce: Boolean(body.has_ecommerce),
-    special_notes: String(body.special_notes || "")
-  });
-  const result = await env.DB.prepare(
-    "INSERT INTO preparation_plans (user_id, streamer_id, platform_account_id, topic, goal, duration_minutes, live_form, has_cohost, has_ecommerce, special_notes, plan_json, source_review_id, source_report_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13) RETURNING *"
-  ).bind(user.id, streamerId, accountId, topic, body.goal || "留得更久", Number(body.duration_minutes || 90), body.live_form || "评论互动", boolInt(body.has_cohost), boolInt(body.has_ecommerce), body.special_notes || "", JSON.stringify(plan), body.source_review_id || null, body.source_report_id || null).first();
+  let plan: any;
+  try {
+    plan = await generatePreparePlanContent(env, streamer, {
+      topic,
+      duration_minutes: Number(body.duration_minutes || 90),
+      goal: String(body.goal || "留得更久"),
+      live_form: String(body.live_form || "评论互动"),
+      has_cohost: Boolean(body.has_cohost),
+      has_ecommerce: Boolean(body.has_ecommerce),
+      special_notes: String(body.special_notes || "")
+    });
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    const message = modelErrorMessage(error);
+    console.error("Prepare plan generation failed", safeErrorLog(error, { user_id: user.id, streamer_id: streamerId }));
+    throw new HttpError(400, `开播方案生成失败：${message}`);
+  }
+  let result: any;
+  try {
+    result = await env.DB.prepare(
+      "INSERT INTO preparation_plans (user_id, streamer_id, platform_account_id, topic, goal, duration_minutes, live_form, has_cohost, has_ecommerce, special_notes, plan_json, source_review_id, source_report_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13) RETURNING *"
+    ).bind(user.id, streamerId, accountId, topic, body.goal || "留得更久", Number(body.duration_minutes || 90), body.live_form || "评论互动", boolInt(body.has_cohost), boolInt(body.has_ecommerce), body.special_notes || "", JSON.stringify(plan), body.source_review_id || null, body.source_report_id || null).first();
+  } catch (error) {
+    console.error("Prepare plan save failed", safeErrorLog(error, { user_id: user.id, streamer_id: streamerId }));
+    throw new HttpError(500, "开播方案保存失败，请稍后重试。");
+  }
   return ok(serializePreparePlan(result));
 }
 
@@ -773,14 +799,28 @@ async function generateSessionReport(request: Request, env: Env, sessionId: numb
   if (!metricsRows.length) throw new HttpError(400, "请先确认直播数据，再生成报告。");
   const previousRows = (await env.DB.prepare("SELECT * FROM live_sessions WHERE user_id=?1 AND streamer_id=?2 AND id<>?3 AND status='reported' ORDER BY id DESC LIMIT 7").bind(user.id, session.streamer_id, sessionId).all()).results || [];
   const rules = await effectiveRules(env, user.id);
-  const reportJson = await generateDiagnosticReport(env, session, metricsRows.map(serializeMetric), previousRows, rules);
+  let reportJson: any;
+  try {
+    reportJson = await generateDiagnosticReport(env, session, metricsRows.map(serializeMetric), previousRows, rules);
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    const message = modelErrorMessage(error);
+    console.error("Report generation failed", safeErrorLog(error, { user_id: user.id, live_session_id: sessionId }));
+    throw new HttpError(400, `复盘报告生成失败：${message}`);
+  }
   const runtime = await modelRuntimeConfig(env);
   const quality = checkReportQuality(reportJson);
-  const result = await env.DB.prepare(
-    "INSERT INTO review_reports (user_id, live_session_id, streamer_id, platform_account_id, summary, report_json, quality_status, quality_warnings, model_name, rule_snapshot) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) RETURNING *"
-  ).bind(user.id, sessionId, session.streamer_id, session.platform_account_id || null, reportJson.one_sentence, JSON.stringify(reportJson), quality.ok ? "passed" : "needs_review", JSON.stringify(quality.warnings), runtime.textModel || modelName(env, "text"), JSON.stringify(rules)).first<any>();
-  await saveReportChildren(env, user.id, result.id, reportJson, session.streamer_id);
-  await env.DB.prepare("UPDATE live_sessions SET status='reported', main_problem=?1, updated_at=CURRENT_TIMESTAMP WHERE id=?2 AND user_id=?3").bind(reportJson.top_issue?.title || "", sessionId, user.id).run();
+  let result: any;
+  try {
+    result = await env.DB.prepare(
+      "INSERT INTO review_reports (user_id, live_session_id, streamer_id, platform_account_id, summary, report_json, quality_status, quality_warnings, model_name, rule_snapshot) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) RETURNING *"
+    ).bind(user.id, sessionId, session.streamer_id, session.platform_account_id || null, reportJson.one_sentence, JSON.stringify(reportJson), quality.ok ? "passed" : "needs_review", JSON.stringify(quality.warnings), runtime.textModel || modelName(env, "text"), JSON.stringify(rules)).first<any>();
+    await saveReportChildren(env, user.id, result.id, reportJson, session.streamer_id);
+    await env.DB.prepare("UPDATE live_sessions SET status='reported', main_problem=?1, updated_at=CURRENT_TIMESTAMP WHERE id=?2 AND user_id=?3").bind(reportJson.top_issue?.title || "", sessionId, user.id).run();
+  } catch (error) {
+    console.error("Report save failed", safeErrorLog(error, { user_id: user.id, live_session_id: sessionId }));
+    throw new HttpError(500, "复盘报告保存失败，请稍后重试。");
+  }
   return ok(await serializeReport(env, user.id, result));
 }
 
@@ -1046,49 +1086,57 @@ async function recognizeOneScreenshot(env: Env, user: UserRow, session: any, scr
 
 async function recognizeScreenshotWithModel(env: Env, bytes: Uint8Array, contentType: string): Promise<any> {
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return mockRecognition();
-  const config = await modelRuntimeConfig(env);
-  if (!config.apiKey || !config.baseUrl || !config.visionModel) throw new Error("当前尚未配置图片识别模型，请手动录入关键数据，或稍后配置视觉模型。");
+  const config = await modelCallConfig(env, "vision");
+  if (!config) throw new HttpError(400, "未配置视觉模型，暂时无法识别截图；文本功能可正常使用。");
+  if (isKnownTextOnlyModel(config.model)) throw new HttpError(400, "当前模型不支持图片输入，请选择视觉模型。");
   const dataUrl = `data:${contentType};base64,${base64(bytes)}`;
-  return await callOpenAIJson(env, config.visionModel, [
+  return await callOpenAIJson(env, config.model, [
     { role: "system", content: "你是直播后台截图识别助手。只提取截图中明确出现的数据，返回严格JSON，不分析、不补全、不猜测。" },
     { role: "user", content: [
       { type: "text", text: visionPrompt() },
       { type: "image_url", image_url: { url: dataUrl } }
     ] }
-  ], config);
+  ], config, 2500);
 }
 
 async function generatePreparePlanContent(env: Env, streamer: any, input: any): Promise<any> {
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return deterministicPreparePlan(streamer, input);
-  const config = await modelRuntimeConfig(env);
-  if (!config.apiKey || !config.baseUrl || !config.textModel) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成开播方案。");
-  const result = await callOpenAIJson(env, config.textModel, [
-    { role: "system", content: "你是LivePilot直播增长导师。必须返回严格JSON，方案要具体、可执行、合规，不要空泛建议。" },
-    { role: "user", content: JSON.stringify({ task: "generate_preparation_plan", streamer, input, schema: preparePlanSchemaHint() }) }
-  ], config);
+  const config = await modelCallConfig(env, "preparation");
+  if (!config) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成开播方案。");
+  const result = await callOpenAIJson(env, config.model, [
+    { role: "system", content: "你是LivePilot直播增长导师。只返回短JSON，不要Markdown。每个字段尽量简短、具体、可执行。" },
+    { role: "user", content: JSON.stringify({ task: "generate_preparation_plan", streamer: { name: streamer.name, direction: streamer.direction, improvement_goal: streamer.improvement_goal }, input, schema: preparePlanSchemaHint() }) }
+  ], config, 900);
   return validatePreparePlan(result, streamer, input);
 }
 
 async function generateDiagnosticReport(env: Env, session: any, metrics: any[], previousSessions: any[], rules: any[]): Promise<any> {
   const context = { session, metrics, previousSessions, rules };
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return deterministicDiagnostic(context);
-  const config = await modelRuntimeConfig(env);
-  if (!config.apiKey || !config.baseUrl || !config.textModel) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成报告。");
-  const result = await callOpenAIJson(env, config.textModel, [
-    { role: "system", content: "你是LivePilot AI直播增长导师。基于确认数据做漏斗诊断，区分事实、推断和待验证假设，输出严格JSON。禁止空泛建议，禁止伪造未提供数据。" },
-    { role: "user", content: JSON.stringify({ task: "generate_live_growth_report", context, schema: reportSchemaHint() }) }
-  ], config);
+  const config = await modelCallConfig(env, "report");
+  if (!config) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成报告。");
+  const compactContext = {
+    session: { title: session.title, topic: session.session_topic || session.title, goal: session.main_goal, live_date: session.live_date },
+    metrics: metrics.slice(0, 40).map((item: any) => ({ key: item.key, label: item.label, raw_value: item.raw_value, normalized_value: item.normalized_value, unit: item.unit })),
+    previous_count: previousSessions.length,
+    rules: rules.slice(0, 5).map((rule: any) => ({ title: rule.title, category: rule.category, risk_level: rule.risk_level, content: String(rule.content || "").slice(0, 120) }))
+  };
+  const result = await callOpenAIJson(env, config.model, [
+    { role: "system", content: "你是LivePilot AI直播增长导师。只返回短JSON，不要Markdown。必须基于数据指出最大瓶颈，给最多3个下一场动作，每个动作含时间、做法、话术、观察指标。不要空泛建议。" },
+    { role: "user", content: JSON.stringify({ task: "generate_live_growth_report", context: compactContext, schema: reportSchemaHint() }) }
+  ], config, 1800);
   return validateReportShape(result, context);
 }
 
-async function callOpenAIJson(env: Env, model: string, messages: any[], config?: ModelRuntimeConfig): Promise<any> {
-  const runtime = config || await modelRuntimeConfig(env);
+async function callOpenAIJson(env: Env, model: string, messages: any[], config?: ModelCallConfig | ModelRuntimeConfig, maxTokens = 2200): Promise<any> {
+  const runtime = config || await modelCallConfig(env, "text");
+  if (!runtime) throw new HttpError(400, "模型尚未配置。");
   if (!runtime.baseUrl || !runtime.apiKey) throw new HttpError(400, "模型尚未配置。");
   assertSafeModelBaseUrl(runtime.baseUrl, env);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), runtime.timeoutMs);
   try {
-    const body = { model, messages, response_format: { type: "json_object" }, temperature: 0.2 };
+    const body = { model, messages, response_format: { type: "json_object" }, temperature: 0.2, max_tokens: maxTokens };
     let response = await fetch(`${runtime.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${runtime.apiKey}` },
@@ -1112,22 +1160,59 @@ async function callOpenAIJson(env: Env, model: string, messages: any[], config?:
     const data = await response.json() as any;
     const text = data.choices?.[0]?.message?.content;
     if (!text) throw new Error("模型返回为空");
-    return JSON.parse(text);
+    return parseModelJson(text);
   } finally {
     clearTimeout(timeout);
   }
 }
 
+function parseModelJson(text: string): any {
+  const raw = String(text || "").trim();
+  const candidates = [
+    raw,
+    raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim()
+  ];
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) candidates.push(raw.slice(firstBrace, lastBrace + 1));
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Try next extraction shape.
+    }
+  }
+  throw new HttpError(400, "模型返回格式异常，未能解析为结构化JSON。请检查模型是否支持JSON输出。");
+}
+
 async function modelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return { provider: "mock", baseUrl: "", apiKey: "", textModel: "mock-text", visionModel: "mock-vision", timeoutMs: 30000, source: "mock" };
+  const text = await modelCallConfig(env, "text");
+  const vision = await modelCallConfig(env, "vision");
+  if (text || vision) {
+    const primary = text || vision!;
+    return {
+      provider: primary.provider,
+      baseUrl: primary.baseUrl,
+      apiKey: primary.apiKey,
+      textModel: text?.model || "",
+      visionModel: vision?.model || "",
+      timeoutMs: primary.timeoutMs,
+      source: "admin"
+    };
+  }
+  return await legacyModelRuntimeConfig(env);
+}
+
+async function legacyModelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
   const stored = await activeStoredModelConfig(env);
   if (stored) {
     return {
       provider: stored.provider_name || "openai-compatible",
-      baseUrl: stored.base_url || "",
+      baseUrl: normalizeModelBaseUrl(stored.base_url || "", env),
       apiKey: (await decryptModelKey(env, stored.api_key_ciphertext, stored.api_key_iv)).trim(),
       textModel: normalizeModelName(stored.text_model_name),
-      visionModel: normalizeModelName(stored.vision_model_name),
+      visionModel: isVisionModelName(stored.vision_model_name) ? normalizeModelName(stored.vision_model_name) : "",
       timeoutMs: Number(stored.timeout_ms || 30000),
       source: "admin"
     };
@@ -1135,10 +1220,10 @@ async function modelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
   if (env.MODEL_API_KEY || env.MODEL_BASE_URL || env.MODEL_TEXT_NAME || env.MODEL_VISION_NAME) {
     return {
       provider: env.MODEL_PROVIDER || "openai-compatible",
-      baseUrl: (env.MODEL_BASE_URL || "").trim(),
+      baseUrl: normalizeModelBaseUrl(env.MODEL_BASE_URL || "", env),
       apiKey: (env.MODEL_API_KEY || "").trim(),
       textModel: normalizeModelName(env.MODEL_TEXT_NAME),
-      visionModel: normalizeModelName(env.MODEL_VISION_NAME),
+      visionModel: isVisionModelName(env.MODEL_VISION_NAME || "") ? normalizeModelName(env.MODEL_VISION_NAME) : "",
       timeoutMs: Number(env.MODEL_TIMEOUT_MS || 30000),
       source: "secret"
     };
@@ -1146,13 +1231,105 @@ async function modelRuntimeConfig(env: Env): Promise<ModelRuntimeConfig> {
   return { provider: "", baseUrl: "", apiKey: "", textModel: "", visionModel: "", timeoutMs: 30000, source: "none" };
 }
 
+async function modelCallConfig(env: Env, purpose: ModelPurpose): Promise<ModelCallConfig | null> {
+  if (env.MODEL_PROVIDER === "mock" && isDev(env)) return { provider: "mock", baseUrl: "", apiKey: "", model: `mock-${purpose}`, timeoutMs: 30000, source: "mock" };
+  const assignments = await getRawModelAssignments(env);
+  const configured = assignments ? await assignedModelConfig(env, assignments, purpose) : null;
+  if (configured) return configured;
+  const legacy = await legacyModelRuntimeConfig(env);
+  if (!legacy.apiKey || !legacy.baseUrl) return null;
+  const model = purpose === "vision" ? legacy.visionModel : legacy.textModel;
+  if (!model) return null;
+  return { provider: legacy.provider, baseUrl: legacy.baseUrl, apiKey: legacy.apiKey, model, timeoutMs: legacy.timeoutMs, source: legacy.source === "secret" ? "secret" : "admin" };
+}
+
+async function assignedModelConfig(env: Env, assignments: any, purpose: ModelPurpose): Promise<ModelCallConfig | null> {
+  const textProviderId = Number(assignments.default_text_provider_id || 0);
+  const visionProviderId = Number(assignments.default_vision_provider_id || 0);
+  const providerId = purpose === "vision"
+    ? visionProviderId
+    : Number(purpose === "report" ? assignments.report_provider_id : purpose === "preparation" ? assignments.preparation_provider_id : 0) || textProviderId;
+  const model = normalizeModelName(
+    purpose === "vision"
+      ? assignments.default_vision_model_name
+      : (purpose === "report" ? assignments.report_model_name : purpose === "preparation" ? assignments.preparation_model_name : "") || assignments.default_text_model_name
+  );
+  if (!providerId || !model) return null;
+  const provider = await getModelProvider(env, providerId);
+  if (!provider?.enabled) return null;
+  const apiKey = (await decryptModelKey(env, provider.api_key_ciphertext, provider.api_key_iv)).trim();
+  if (!apiKey) return null;
+  return { provider: provider.name, baseUrl: normalizeModelBaseUrl(provider.base_url, env), apiKey, model, timeoutMs: Number(assignments.timeout_ms || provider.timeout_ms || 30000), source: "admin" };
+}
+
 async function activeStoredModelConfig(env: Env): Promise<any | null> {
   return await env.DB.prepare("SELECT * FROM system_model_configs WHERE enabled=1 ORDER BY updated_at DESC, id DESC LIMIT 1").first<any>();
+}
+
+async function getRawModelAssignments(env: Env): Promise<any | null> {
+  return await env.DB.prepare("SELECT * FROM model_assignments WHERE id=1").first<any>().catch(() => null);
+}
+
+async function getModelProvider(env: Env, id: number): Promise<any | null> {
+  return await env.DB.prepare("SELECT * FROM model_providers WHERE id=?1").bind(id).first<any>().catch(() => null);
+}
+
+async function listModelProviders(env: Env): Promise<any[]> {
+  const rows = await env.DB.prepare("SELECT * FROM model_providers ORDER BY enabled DESC, updated_at DESC, id DESC").all();
+  const providers = rows.results || [];
+  const out: any[] = [];
+  for (const provider of providers) {
+    const models = await env.DB.prepare("SELECT model_id, capability, updated_at FROM provider_models WHERE provider_id=?1 ORDER BY capability, model_id").bind((provider as any).id).all();
+    out.push({ ...maskModelProvider(provider), models: models.results || [] });
+  }
+  return out;
+}
+
+async function getModelAssignments(env: Env): Promise<Record<string, unknown>> {
+  const row = await getRawModelAssignments(env);
+  return {
+    default_text_provider_id: row?.default_text_provider_id || null,
+    default_text_model_name: row?.default_text_model_name || "",
+    default_vision_provider_id: row?.default_vision_provider_id || null,
+    default_vision_model_name: row?.default_vision_model_name || "",
+    report_provider_id: row?.report_provider_id || null,
+    report_model_name: row?.report_model_name || "",
+    preparation_provider_id: row?.preparation_provider_id || null,
+    preparation_model_name: row?.preparation_model_name || "",
+    updated_at: row?.updated_at || ""
+  };
+}
+
+async function getAdminModels(env: Env): Promise<Response> {
+  return ok({
+    providers: await listModelProviders(env),
+    assignments: await getModelAssignments(env),
+    items: (await listModelConfigs(env)).map(maskModelConfig),
+    active: maskModelConfig(await activeStoredModelConfig(env))
+  });
 }
 
 async function listModelConfigs(env: Env): Promise<any[]> {
   const rows = await env.DB.prepare("SELECT * FROM system_model_configs ORDER BY enabled DESC, updated_at DESC, id DESC LIMIT 20").all();
   return rows.results || [];
+}
+
+function maskModelProvider(row: any | null): Record<string, unknown> | null {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    base_url: row.base_url,
+    api_key_masked: row.api_key_last_four ? `****${row.api_key_last_four}` : "",
+    api_key_last_four: row.api_key_last_four || "",
+    enabled: Boolean(row.enabled),
+    last_test_status: row.last_test_status,
+    last_test_message: row.last_test_message,
+    last_tested_at: row.last_tested_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    updated_by: row.updated_by
+  };
 }
 
 function maskModelConfig(row: any | null): Record<string, unknown> | null {
@@ -1176,10 +1353,157 @@ function maskModelConfig(row: any | null): Record<string, unknown> | null {
   };
 }
 
+async function createModelProvider(request: Request, env: Env, admin: UserRow): Promise<Response> {
+  const body = await readJson<Record<string, unknown>>(request);
+  const row = await saveModelProvider(env, admin, body, null);
+  await audit(env, admin, "admin.model_provider.create", "model_provider", String((row as any).id), "success", { name: (row as any).name }, request);
+  return ok({ item: maskModelProvider(row) });
+}
+
+async function updateModelProvider(request: Request, env: Env, admin: UserRow, id: number): Promise<Response> {
+  const existing = await getModelProvider(env, id);
+  if (!existing) throw new HttpError(404, "模型源不存在。");
+  const row = await saveModelProvider(env, admin, await readJson<Record<string, unknown>>(request), existing);
+  await audit(env, admin, "admin.model_provider.update", "model_provider", String(id), "success", { name: (row as any).name }, request);
+  return ok({ item: maskModelProvider(row) });
+}
+
+async function saveModelProvider(env: Env, admin: UserRow, body: Record<string, unknown>, existing: any | null): Promise<any> {
+  const name = String(body.name || existing?.name || "OpenAI Compatible").trim().slice(0, 80);
+  if (!name) throw new HttpError(400, "请填写模型源名称。");
+  const baseUrl = normalizeModelBaseUrl(String(body.base_url || existing?.base_url || ""), env);
+  const rawKey = String(body.api_key || "").trim();
+  let cipher = existing?.api_key_ciphertext || "";
+  let iv = existing?.api_key_iv || "";
+  let lastFour = existing?.api_key_last_four || "";
+  if (rawKey) {
+    const encrypted = await encryptModelKey(env, rawKey);
+    cipher = encrypted.ciphertext;
+    iv = encrypted.iv;
+    lastFour = rawKey.slice(-4);
+  }
+  if (!cipher) throw new HttpError(400, "请填写 API Key。");
+  const enabled = body.enabled === undefined ? Number(existing?.enabled ?? 1) : (body.enabled === false ? 0 : 1);
+  if (existing) {
+    return await env.DB.prepare("UPDATE model_providers SET name=?1, base_url=?2, api_key_ciphertext=?3, api_key_iv=?4, api_key_last_four=?5, enabled=?6, updated_by=?7, updated_at=CURRENT_TIMESTAMP WHERE id=?8 RETURNING *")
+      .bind(name, baseUrl, cipher, iv, lastFour, enabled, admin.id, existing.id).first();
+  }
+  return await env.DB.prepare("INSERT INTO model_providers (name, base_url, api_key_ciphertext, api_key_iv, api_key_last_four, enabled, updated_by) VALUES (?1,?2,?3,?4,?5,?6,?7) RETURNING *")
+    .bind(name, baseUrl, cipher, iv, lastFour, enabled, admin.id).first();
+}
+
+async function deleteModelProvider(request: Request, env: Env, admin: UserRow, id: number): Promise<Response> {
+  const existing = await getModelProvider(env, id);
+  if (!existing) throw new HttpError(404, "模型源不存在。");
+  await env.DB.prepare("UPDATE model_providers SET enabled=0, updated_by=?1, updated_at=CURRENT_TIMESTAMP WHERE id=?2").bind(admin.id, id).run();
+  await env.DB.prepare("UPDATE model_assignments SET default_text_provider_id=NULLIF(default_text_provider_id, ?1), default_vision_provider_id=NULLIF(default_vision_provider_id, ?1), report_provider_id=NULLIF(report_provider_id, ?1), preparation_provider_id=NULLIF(preparation_provider_id, ?1), updated_at=CURRENT_TIMESTAMP WHERE id=1").bind(id).run();
+  await audit(env, admin, "admin.model_provider.disable", "model_provider", String(id), "success", {}, request);
+  return ok({ ok: true, message: "模型源已停用。" });
+}
+
+async function testModelProvider(request: Request, env: Env, admin: UserRow, id: number): Promise<Response> {
+  const provider = await providerWithKey(env, id);
+  const started = Date.now();
+  try {
+    const models = env.MODEL_PROVIDER === "mock" && isDev(env) ? mockProviderModels() : await fetchProviderModels(provider, env);
+    const elapsed = Date.now() - started;
+    await env.DB.prepare("UPDATE model_providers SET last_test_status='success', last_test_message=?1, last_tested_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?2")
+      .bind(`模型源连接成功，读取到 ${models.length} 个模型，用时 ${elapsed}ms。`, id).run();
+    await audit(env, admin, "admin.model_provider.test", "model_provider", String(id), "success", { elapsed_ms: elapsed, model_count: models.length }, request);
+    return ok({ ok: true, status: "success", elapsed_ms: elapsed, models, message: `模型源连接成功，读取到 ${models.length} 个模型。` });
+  } catch (error) {
+    const message = providerErrorMessage(error);
+    await env.DB.prepare("UPDATE model_providers SET last_test_status='failed', last_test_message=?1, last_tested_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?2").bind(message, id).run();
+    await audit(env, admin, "admin.model_provider.test", "model_provider", String(id), "failed", { message }, request);
+    throw new HttpError(400, message);
+  }
+}
+
+async function syncProviderModels(request: Request, env: Env, admin: UserRow, id: number): Promise<Response> {
+  const provider = await providerWithKey(env, id);
+  const models = env.MODEL_PROVIDER === "mock" && isDev(env) ? mockProviderModels() : await fetchProviderModels(provider, env);
+  for (const model of models.slice(0, 500)) {
+    await env.DB.prepare("INSERT INTO provider_models (provider_id, model_id, capability, updated_at) VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP) ON CONFLICT(provider_id, model_id) DO UPDATE SET capability=excluded.capability, updated_at=CURRENT_TIMESTAMP")
+      .bind(id, model.id, model.capability).run();
+  }
+  await env.DB.prepare("UPDATE model_providers SET last_test_status='success', last_test_message=?1, last_tested_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?2")
+    .bind(`已拉取 ${models.length} 个模型。`, id).run();
+  await audit(env, admin, "admin.model_provider.sync_models", "model_provider", String(id), "success", { model_count: models.length }, request);
+  return ok({ ok: true, items: models, message: `已拉取 ${models.length} 个模型。` });
+}
+
+async function saveModelAssignments(request: Request, env: Env, admin: UserRow): Promise<Response> {
+  const body = await readJson<Record<string, unknown>>(request);
+  const textProviderId = nullableProviderId(body.default_text_provider_id);
+  const visionProviderId = nullableProviderId(body.default_vision_provider_id);
+  const reportProviderId = nullableProviderId(body.report_provider_id);
+  const preparationProviderId = nullableProviderId(body.preparation_provider_id);
+  if (textProviderId) await ensureProviderEnabled(env, textProviderId);
+  if (visionProviderId) await ensureProviderEnabled(env, visionProviderId);
+  if (reportProviderId) await ensureProviderEnabled(env, reportProviderId);
+  if (preparationProviderId) await ensureProviderEnabled(env, preparationProviderId);
+  const textModel = normalizeModelName(body.default_text_model_name || "");
+  const visionModel = normalizeModelName(body.default_vision_model_name || "");
+  if (visionModel && isKnownTextOnlyModel(visionModel)) throw new HttpError(400, "当前模型不支持图片输入，请选择视觉模型。");
+  await env.DB.prepare(`
+    INSERT INTO model_assignments (id, default_text_provider_id, default_text_model_name, default_vision_provider_id, default_vision_model_name, report_provider_id, report_model_name, preparation_provider_id, preparation_model_name, updated_by)
+    VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+    ON CONFLICT(id) DO UPDATE SET
+      default_text_provider_id=excluded.default_text_provider_id,
+      default_text_model_name=excluded.default_text_model_name,
+      default_vision_provider_id=excluded.default_vision_provider_id,
+      default_vision_model_name=excluded.default_vision_model_name,
+      report_provider_id=excluded.report_provider_id,
+      report_model_name=excluded.report_model_name,
+      preparation_provider_id=excluded.preparation_provider_id,
+      preparation_model_name=excluded.preparation_model_name,
+      updated_by=excluded.updated_by,
+      updated_at=CURRENT_TIMESTAMP
+  `).bind(
+    textProviderId,
+    textModel,
+    visionProviderId,
+    visionModel,
+    reportProviderId,
+    normalizeModelName(body.report_model_name || ""),
+    preparationProviderId,
+    normalizeModelName(body.preparation_model_name || ""),
+    admin.id
+  ).run();
+  await audit(env, admin, "admin.model_assignment.save", "model_assignment", "1", "success", { text_provider_id: textProviderId, vision_provider_id: visionProviderId }, request);
+  return ok(await getModelAssignments(env));
+}
+
+async function testAssignedModel(request: Request, env: Env, admin: UserRow, kind: "text" | "vision"): Promise<Response> {
+  const started = Date.now();
+  if (env.MODEL_PROVIDER === "mock" && isDev(env)) {
+    await audit(env, admin, `admin.model_assignment.test_${kind}`, "model_assignment", "1", "success", { local_mock: true }, request);
+    return ok({ ok: true, status: "success", model_name: `mock-${kind}`, elapsed_ms: Date.now() - started, message: kind === "vision" ? "视觉模型测试成功。" : "文本模型测试成功。" });
+  }
+  const config = await modelCallConfig(env, kind);
+  if (!config) throw new HttpError(400, kind === "vision" ? "未配置视觉模型，暂时无法识别截图；文本功能可正常使用。" : "文字分析模型暂未配置。");
+  try {
+    if (kind === "vision") {
+      if (isKnownTextOnlyModel(config.model)) throw new HttpError(400, "当前模型不支持图片输入，请选择视觉模型。");
+      await callVisionTest(env, config);
+    } else {
+      await callOpenAIJson(env, config.model, [
+        { role: "system", content: "只返回JSON。" },
+        { role: "user", content: "请返回 {\"ok\": true, \"message\": \"文本模型测试成功\"}" }
+      ], config);
+    }
+    await audit(env, admin, `admin.model_assignment.test_${kind}`, "model_assignment", "1", "success", { model: config.model, elapsed_ms: Date.now() - started }, request);
+    return ok({ ok: true, status: "success", model_name: config.model, elapsed_ms: Date.now() - started, message: kind === "vision" ? "视觉模型测试成功。" : "文本模型测试成功。" });
+  } catch (error) {
+    const message = modelErrorMessage(error);
+    await audit(env, admin, `admin.model_assignment.test_${kind}`, "model_assignment", "1", "failed", { model: config.model, message }, request);
+    throw new HttpError(400, message);
+  }
+}
+
 async function saveAdminModelConfig(request: Request, env: Env, admin: UserRow): Promise<Response> {
   const body = await readJson<Record<string, unknown>>(request);
-  const baseUrl = String(body.base_url || "").trim();
-  assertSafeModelBaseUrl(baseUrl, env);
+  const baseUrl = normalizeModelBaseUrl(String(body.base_url || "").trim(), env);
   const existing = Number(body.id || 0) ? await env.DB.prepare("SELECT * FROM system_model_configs WHERE id=?1").bind(Number(body.id)).first<any>() : null;
   const rawKey = String(body.api_key || "").trim();
   let cipher = existing?.api_key_ciphertext || "";
@@ -1209,10 +1533,17 @@ async function saveAdminModelConfig(request: Request, env: Env, admin: UserRow):
     ? await env.DB.prepare("UPDATE system_model_configs SET provider_name=?1, base_url=?2, api_key_ciphertext=?3, api_key_iv=?4, api_key_last_four=?5, text_model_name=?6, vision_model_name=?7, timeout_ms=?8, enabled=?9, updated_by=?10, updated_at=CURRENT_TIMESTAMP WHERE id=?11 RETURNING *").bind(...values, existing.id).first()
     : await env.DB.prepare("INSERT INTO system_model_configs (provider_name, base_url, api_key_ciphertext, api_key_iv, api_key_last_four, text_model_name, vision_model_name, timeout_ms, enabled, updated_by) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) RETURNING *").bind(...values).first();
   await audit(env, admin, "admin.model.save", "system_model_config", String((row as any).id), "success", { enabled: Boolean((row as any).enabled), provider_name: (row as any).provider_name }, request);
+  const provider = await saveModelProvider(env, admin, { name: values[0], base_url: values[1], api_key: rawKey || undefined, enabled: true }, null).catch(() => null);
+  if (provider && values[5]) {
+    await env.DB.prepare("UPDATE model_assignments SET default_text_provider_id=?1, default_text_model_name=?2, default_vision_provider_id=NULL, default_vision_model_name='', updated_by=?3, updated_at=CURRENT_TIMESTAMP WHERE id=1")
+      .bind((provider as any).id, values[5], admin.id).run();
+  }
   return ok(maskModelConfig(row));
 }
 
 async function testAdminModel(request: Request, env: Env, admin: UserRow, kind: "text" | "vision"): Promise<Response> {
+  const assignments = await getRawModelAssignments(env);
+  if (assignments) return await testAssignedModel(request, env, admin, kind);
   const started = Date.now();
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) {
     await audit(env, admin, `admin.model.test_${kind}`, "system_model_config", "mock", "success", { local_mock: true }, request);
@@ -1243,6 +1574,108 @@ async function testAdminModel(request: Request, env: Env, admin: UserRow, kind: 
     await audit(env, admin, `admin.model.test_${kind}`, "system_model_config", "active", "failed", { message }, request);
     throw new HttpError(400, message);
   }
+}
+
+async function providerWithKey(env: Env, id: number): Promise<any> {
+  const provider = await getModelProvider(env, id);
+  if (!provider) throw new HttpError(404, "模型源不存在。");
+  if (!provider.enabled) throw new HttpError(400, "模型源已停用，请先启用后再测试。");
+  const apiKey = (await decryptModelKey(env, provider.api_key_ciphertext, provider.api_key_iv)).trim();
+  if (!apiKey) throw new HttpError(400, "模型源 API Key 未配置。");
+  return { ...provider, base_url: normalizeModelBaseUrl(provider.base_url, env), api_key: apiKey };
+}
+
+async function fetchProviderModels(provider: any, env: Env): Promise<{ id: string; capability: string }[]> {
+  assertSafeModelBaseUrl(provider.base_url, env);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(`${String(provider.base_url).replace(/\/$/, "")}/models`, {
+      method: "GET",
+      headers: { authorization: `Bearer ${provider.api_key}` },
+      signal: controller.signal
+    });
+    if (!response.ok) throw new UpstreamModelError(await modelUpstreamError(response));
+    const data = await response.json().catch(() => null) as any;
+    const rawItems = Array.isArray(data?.data) ? data.data : Array.isArray(data?.models) ? data.models : [];
+    if (!Array.isArray(rawItems)) throw new HttpError(400, "模型源返回格式不是 OpenAI Compatible。");
+    const models = rawItems
+      .map((item: any) => typeof item === "string" ? item : String(item?.id || item?.name || ""))
+      .filter(Boolean)
+      .map((id: string) => ({ id, capability: inferModelCapability(id) }));
+    if (!models.length) throw new HttpError(400, "模型源没有返回可用模型。");
+    return models;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function callVisionTest(env: Env, config: ModelCallConfig): Promise<void> {
+  const dataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+  await callOpenAIJson(env, config.model, [
+    { role: "system", content: "只返回JSON。" },
+    { role: "user", content: [
+      { type: "text", text: "请观察图片并返回 {\"ok\": true, \"message\": \"视觉模型测试成功\"}" },
+      { type: "image_url", image_url: { url: dataUrl } }
+    ] }
+  ], config);
+}
+
+function nullableProviderId(value: unknown): number | null {
+  const id = Number(value || 0);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+async function ensureProviderEnabled(env: Env, id: number): Promise<void> {
+  const row = await getModelProvider(env, id);
+  if (!row?.enabled) throw new HttpError(400, "选择的模型源不存在或已停用。");
+}
+
+function normalizeModelBaseUrl(value: string, env: Env): string {
+  const raw = value.trim().replace(/\/+$/, "");
+  if (!raw) throw new HttpError(400, "请填写 Base URL。");
+  let url: URL;
+  try { url = new URL(raw); } catch { throw new HttpError(400, "Base URL格式不正确。"); }
+  if (env.APP_ENV === "production" && url.protocol !== "https:") throw new HttpError(400, "生产环境模型Base URL必须使用HTTPS。");
+  if (!url.pathname || url.pathname === "/") url.pathname = "/v1";
+  const normalized = url.toString().replace(/\/+$/, "");
+  assertSafeModelBaseUrl(normalized, env);
+  return normalized;
+}
+
+function inferModelCapability(modelId: string): string {
+  const lower = modelId.toLowerCase();
+  if (/(qwen-vl|vision|omni|gpt-4o|gemini|4v|\bvl\b|[-_]vl)/i.test(lower)) return "vision";
+  if (/(glm|deepseek|qwen-plus)/i.test(lower)) return "text";
+  return "unknown";
+}
+
+function mockProviderModels(): { id: string; capability: string }[] {
+  return [
+    { id: "glm-5.1", capability: "text" },
+    { id: "qwen-vl-plus", capability: "vision" },
+    { id: "mock-unknown", capability: "unknown" }
+  ];
+}
+
+function isVisionModelName(value: unknown): boolean {
+  return inferModelCapability(String(value || "")) === "vision";
+}
+
+function providerErrorMessage(error: unknown): string {
+  if (error instanceof HttpError) return error.message;
+  if (error instanceof UpstreamModelError) {
+    const status = error.details.status || 0;
+    const text = modelErrorText(error.details);
+    if ([401, 403].includes(status)) return `API Key无效或没有权限。上游返回：${text || status}`;
+    if (status === 404) return "Base URL不是OpenAI Compatible接口，或没有 /models 能力。";
+    if (status === 429) return "模型源请求过于频繁，请稍后再试。";
+    return `模型源连接失败。上游返回：${text || status}`;
+  }
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (/abort|timeout|timed/i.test(message)) return "模型源请求超时，请检查Base URL或稍后重试。";
+  if (/fetch|network|failed/i.test(message)) return "Base URL无法连接，请检查地址是否正确。";
+  return "模型源连接失败，请检查Base URL和API Key。";
 }
 
 async function modelAvailability(env: Env, kind: "text" | "vision"): Promise<string> {
@@ -1854,11 +2287,11 @@ function visionPrompt(): string {
 }
 
 function preparePlanSchemaHint(): string {
-  return "recommended_theme, backup_themes[2], titles[5], opening_3_minutes, interaction_nodes[3], follow_prompts[2], new_traffic_script, outline[], risk_notes[], target_metrics[3]";
+  return "JSON字段：recommended_theme字符串；titles数组3条；opening_3_minutes字符串；interaction_nodes数组3条；follow_prompts数组2条；risk_notes数组2条；target_metrics数组3条。";
 }
 
 function reportSchemaHint(): string {
-  return "one_sentence, strongest_advantage, top_issue{title,evidence,confidence}, facts[], funnel{exposure,entry,retention,interaction,follow,revenue}, diagnoses[], actions[<=3], timeline_plan, scripts, experiments[<=3], limitations[]";
+  return "JSON字段：one_sentence；strongest_advantage；top_issue{title,evidence,confidence}；diagnoses数组最多3项；actions数组最多3项，每项含title,timing,instruction,script_example,target_metric,expected_direction；experiments数组最多3项；limitations数组。";
 }
 
 async function serializePlatformAccount(env: Env, row: any, includeDetail = false): Promise<Record<string, unknown>> {

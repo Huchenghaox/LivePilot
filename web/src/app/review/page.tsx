@@ -78,6 +78,8 @@ export default function ReviewPage() {
   const [selfReview, setSelfReview] = useState("");
   const [screenshots, setScreenshots] = useState<SelectedScreenshot[]>([]);
   const screenshotsRef = useRef<SelectedScreenshot[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploadHint, setUploadHint] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previousTaskResult, setPreviousTaskResult] = useState<PreviousTaskResult | null>(null);
   const [createdId, setCreatedId] = useState<number | null>(null);
@@ -172,14 +174,18 @@ export default function ReviewPage() {
     }
   }
 
-  function selectScreenshots(fileList: FileList | null) {
-    if (!fileList?.length) return;
-    const accepted = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-    const maxSize = 20 * 1024 * 1024;
+  function selectScreenshots(fileList: FileList | File[] | null, source = "选择") {
+    if (!fileList?.length) {
+      setUploadHint("未检测到图片，请复制截图或选择图片文件。");
+      return;
+    }
+    const accepted = ["image/png", "image/jpeg", "image/webp"];
+    const maxSize = 10 * 1024 * 1024;
     const next = Array.from(fileList).map((file) => {
       let itemError = "";
-      if (!accepted.includes(file.type)) itemError = "请上传 PNG、JPG、WEBP 或 GIF 格式的截图";
-      if (file.size > maxSize) itemError = "截图过大，请上传 20MB 以内的图片";
+      if (file.type === "image/gif") itemError = "暂不支持动态 GIF，请上传 PNG、JPG 或 WebP。";
+      else if (!accepted.includes(file.type)) itemError = "请上传 PNG、JPG 或 WebP 格式的截图。";
+      if (file.size > maxSize) itemError = "截图过大，请上传 10MB 以内的图片。";
       if (file.size === 0) itemError = "图片为空，请重新选择";
       return {
         id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
@@ -189,6 +195,7 @@ export default function ReviewPage() {
       };
     });
     setScreenshots((current) => [...current, ...next]);
+    setUploadHint(`${source}已加入 ${next.length} 张图片。`);
   }
 
   function removeScreenshot(id: string) {
@@ -317,6 +324,23 @@ export default function ReviewPage() {
   useEffect(() => {
     screenshotsRef.current = screenshots;
   }, [screenshots]);
+
+  useEffect(() => {
+    function onPaste(event: ClipboardEvent) {
+      const files = Array.from(event.clipboardData?.items || [])
+        .filter((item) => item.kind === "file")
+        .map((item) => item.getAsFile())
+        .filter(Boolean) as File[];
+      if (!files.length) {
+        setUploadHint("未检测到图片，请复制截图或选择图片文件。");
+        return;
+      }
+      event.preventDefault();
+      selectScreenshots(files, "粘贴图片");
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
 
   useEffect(() => () => {
     screenshotsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
@@ -464,15 +488,35 @@ export default function ReviewPage() {
               </div>
               <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">图片模型未配置可继续</span>
             </div>
-            <label className="mb-3 block cursor-pointer rounded-2xl border border-dashed border-brand/35 bg-brand/5 px-4 py-8 text-center transition hover:border-brand hover:bg-brand/10">
+            <label
+              className={`mb-3 block cursor-pointer rounded-2xl border border-dashed px-4 py-8 text-center transition ${dragActive ? "border-brand bg-brand/15 shadow-glow" : "border-brand/35 bg-brand/5 hover:border-brand hover:bg-brand/10"}`}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setDragActive(false);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDragActive(false);
+                selectScreenshots(Array.from(event.dataTransfer.files), "拖拽图片");
+              }}
+            >
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-brand/30 bg-brand/10 text-xl text-brand">+</span>
-              <span className="mt-3 block text-sm font-semibold text-slate-100">选择或拖入抖音后台截图</span>
-              <span className="mt-1 block text-xs text-slate-500">PNG、JPG、WEBP、GIF，单张不超过 20MB。可直接跳过进入手动录入。</span>
-              <input className="sr-only" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => {
-                selectScreenshots(event.target.files);
+              <span className="mt-3 block text-sm font-semibold text-slate-100">选择、拖入或直接粘贴抖音后台截图</span>
+              <span className="mt-1 block text-xs text-slate-500">PNG、JPG、WEBP，单张不超过 10MB。支持 Cmd+V / Ctrl+V 粘贴微信或系统截图。</span>
+              <input className="sr-only" type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={(event) => {
+                selectScreenshots(event.target.files, "选择图片");
                 event.currentTarget.value = "";
               }} />
             </label>
+            {uploadHint ? <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-slate-300">{uploadHint}</div> : null}
             <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
               正式使用时不会把模拟识别伪装成真实数据；如果没有可用图片模型，下一步会让你确认或手动补充关键指标。
             </div>
