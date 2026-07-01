@@ -716,7 +716,7 @@ async function getSessionMetrics(request: Request, env: Env, sessionId: number):
   const rows = await env.DB.prepare("SELECT * FROM review_metrics WHERE user_id=?1 AND live_session_id=?2 ORDER BY id").bind(user.id, sessionId).all();
   const metrics = metricsObject(rows.results || []);
   const items = (rows.results || []).map(serializeMetric);
-  return ok({
+  const response = {
     ...metrics,
     session,
     session_topic: session.session_topic || session.title || "",
@@ -727,7 +727,15 @@ async function getSessionMetrics(request: Request, env: Env, sessionId: number):
     self_review: session.self_review || "",
     items,
     fields: items.map(metricToField)
+  };
+  console.log("LivePilot screenshot pipeline /metrics API response", {
+    user_id: user.id,
+    live_session_id: sessionId,
+    field_count: response.fields.length,
+    field_keys: response.fields.map((item: any) => item.metric_key),
+    response
   });
+  return ok(response);
 }
 
 async function saveSessionMetrics(request: Request, env: Env, sessionId: number): Promise<Response> {
@@ -1158,6 +1166,20 @@ async function recognizeScreenshotWithModel(env: Env, bytes: Uint8Array, content
   if (!config) throw new HttpError(400, "未配置视觉模型，暂时无法识别截图；文本功能可正常使用。");
   if (isKnownTextOnlyModel(config.model)) throw new HttpError(400, "当前模型不支持图片输入，请选择视觉模型。");
   const dataUrl = `data:${contentType};base64,${base64(bytes)}`;
+  const fixed = await callOpenAIJson(env, config.model, [
+    { role: "system", content: "你是抖音直播后台固定模板数据抽取器。只返回JSON，不要解释，不要总结，不要推断。" },
+    { role: "user", content: [
+      { type: "text", text: douyinDashboardPrompt() },
+      { type: "image_url", image_url: { url: dataUrl } }
+    ] }
+  ], config, 1800, { userId, operation: "screenshot_recognition", purpose: "vision" });
+  if (isDouyinDashboardResult(fixed)) return fixed;
+  console.log("LivePilot screenshot pipeline fallback to generic vision recognition", {
+    user_id: userId,
+    platform: fixed?.platform || null,
+    screenshot_type: fixed?.screenshot_type || null,
+    keys: Object.keys(fixed || {})
+  });
   return await callOpenAIJson(env, config.model, [
     { role: "system", content: "你是直播后台截图识别助手。只提取截图中明确出现的数据，返回严格JSON，不分析、不补全、不猜测。" },
     { role: "user", content: [
@@ -1231,7 +1253,14 @@ async function callOpenAIJson(env: Env, model: string, messages: any[], config?:
     const data = await response.json() as any;
     const text = data.choices?.[0]?.message?.content;
     if (!text) throw new Error("模型返回为空");
-    return parseModelJson(text);
+    if (log?.operation === "screenshot_recognition") {
+      console.log("LivePilot screenshot pipeline raw model response", { user_id: log.userId, model, raw: String(text).slice(0, 6000) });
+    }
+    const parsed = parseModelJson(text);
+    if (log?.operation === "screenshot_recognition") {
+      console.log("LivePilot screenshot pipeline parsed JSON", { user_id: log.userId, parsed });
+    }
+    return parsed;
   } catch (error) {
     status = "failed";
     errorMessage = modelErrorMessage(error);
@@ -2182,6 +2211,7 @@ function metricDefinitions(): Record<string, { label: string; category: string; 
     impressions: { label: "曝光人数", category: "traffic", unit: "人" },
     room_entries: { label: "进房人数", category: "traffic", unit: "人" },
     entry_rate: { label: "进房率", category: "traffic", unit: "%" },
+    total_viewers: { label: "累计观看", category: "traffic", unit: "人" },
     average_online: { label: "平均在线人数", category: "traffic", unit: "人" },
     peak_online: { label: "最高在线人数", category: "traffic", unit: "人" },
     average_watch_seconds: { label: "人均停留时长", category: "retention", unit: "秒" },
@@ -2197,10 +2227,37 @@ function metricDefinitions(): Record<string, { label: string; category: string; 
     member_income: { label: "会员收入", category: "revenue", unit: "元" },
     guardian_income: { label: "星守护收入", category: "revenue", unit: "元" },
     estimated_income: { label: "预计本场收入", category: "revenue", unit: "元" },
+    gift_income: { label: "礼物收入", category: "revenue", unit: "元" },
     product_clicks: { label: "商品点击", category: "conversion", unit: "次" },
     orders: { label: "成交订单", category: "conversion", unit: "单" },
+    buyers: { label: "成交人数", category: "conversion", unit: "人" },
+    conversion_rate: { label: "转化率", category: "conversion", unit: "%" },
     revenue: { label: "成交金额", category: "conversion", unit: "元" }
   };
+}
+
+function fixedDouyinDashboardFields(): Array<{ source: string; key: string; label: string; category: string; unit: string }> {
+  return [
+    { source: "exposure_count", key: "impressions", label: "曝光人数", category: "traffic", unit: "人" },
+    { source: "enter_count", key: "room_entries", label: "进房人数", category: "traffic", unit: "人" },
+    { source: "enter_rate", key: "entry_rate", label: "进房率", category: "traffic", unit: "%" },
+    { source: "viewer_count", key: "total_viewers", label: "累计观看", category: "traffic", unit: "人" },
+    { source: "average_online", key: "average_online", label: "平均在线人数", category: "traffic", unit: "人" },
+    { source: "peak_online", key: "peak_online", label: "最高在线人数", category: "traffic", unit: "人" },
+    { source: "average_watch_seconds", key: "average_watch_seconds", label: "人均停留时长", category: "retention", unit: "秒" },
+    { source: "comment_count", key: "comments", label: "评论人数", category: "interaction", unit: "人" },
+    { source: "like_count", key: "likes", label: "点赞次数", category: "interaction", unit: "次" },
+    { source: "share_count", key: "shares", label: "分享次数", category: "interaction", unit: "次" },
+    { source: "new_follow_count", key: "new_followers", label: "新增关注", category: "follow", unit: "人" },
+    { source: "fans_group_count", key: "fan_club_joins", label: "加粉丝团人数", category: "follow", unit: "人" },
+    { source: "yinlang", key: "yinlang", label: "收获音浪", category: "revenue", unit: "音浪" },
+    { source: "gift_user_count", key: "gift_users", label: "送礼人数", category: "revenue", unit: "人" },
+    { source: "gift_income", key: "gift_income", label: "礼物收入", category: "revenue", unit: "元" },
+    { source: "gmv", key: "revenue", label: "成交金额", category: "conversion", unit: "元" },
+    { source: "order_count", key: "orders", label: "成交订单", category: "conversion", unit: "单" },
+    { source: "buyer_count", key: "buyers", label: "成交人数", category: "conversion", unit: "人" },
+    { source: "conversion_rate", key: "conversion_rate", label: "转化率", category: "conversion", unit: "%" }
+  ];
 }
 
 function canonicalMetricKey(value: unknown): string {
@@ -2215,25 +2272,29 @@ function canonicalMetricKey(value: unknown): string {
     [/开播时间|开始时间|started_at/, "started_at"],
     [/关播时间|结束时间|ended_at/, "ended_at"],
     [/曝光人数|曝光|impression/, "impressions"],
-    [/进房人数|进入人数|进房\b|room_entries|entry_count/, "room_entries"],
-    [/进房率|曝光进入率|entry_rate/, "entry_rate"],
+    [/进房人数|进入直播间人数|直播间进入人数|进入人数|进房\b|room_entries|entry_count|enter_count/, "room_entries"],
+    [/进房率|进入率|曝光进入率|entry_rate|enter_rate/, "entry_rate"],
+    [/累计观看|观看人数|viewer_count|total_viewers/, "total_viewers"],
     [/平均在线人数|平均在线|average_online/, "average_online"],
     [/最高在线人数|最高在线|peak_online/, "peak_online"],
-    [/人均停留时长|平均停留|停留时长|average_watch|average_stay/, "average_watch_seconds"],
-    [/评论人数|评论数|comments|comment_users/, "comments"],
-    [/点赞次数|点赞数|likes/, "likes"],
-    [/分享次数|分享数|shares/, "shares"],
-    [/新增粉丝|新增关注|new_followers/, "new_followers"],
-    [/加粉丝团人数|粉丝团|fan_club/, "fan_club_joins"],
-    [/送礼人数|gift_users/, "gift_users"],
+    [/人均停留时长|人均停留|平均观看时长|平均停留|停留时长|average_watch|average_stay/, "average_watch_seconds"],
+    [/评论人数|评论数|comments|comment_users|comment_count/, "comments"],
+    [/点赞次数|点赞数|likes|like_count/, "likes"],
+    [/分享次数|分享数|shares|share_count/, "shares"],
+    [/新增粉丝|新增关注|涨粉|new_followers|new_follow_count/, "new_followers"],
+    [/加粉丝团人数|粉丝团|fan_club|fans_group_count/, "fan_club_joins"],
+    [/送礼人数|gift_users|gift_user_count/, "gift_users"],
     [/送礼率|gift_rate/, "gift_rate"],
     [/收获音浪|音浪|yinlang/, "yinlang"],
+    [/礼物收入|gift_income/, "gift_income"],
     [/预计本场收入|预计收入|estimated_income/, "estimated_income"],
     [/会员收入|member_income/, "member_income"],
     [/星守护收入|guardian_income/, "guardian_income"],
     [/商品点击|product_clicks/, "product_clicks"],
-    [/成交人数|成交订单|orders|buyers/, "orders"],
-    [/成交金额|gmv|revenue/, "revenue"]
+    [/成交订单|订单数|order_count|orders/, "orders"],
+    [/成交人数|buyer_count|buyers/, "buyers"],
+    [/转化率|conversion_rate/, "conversion_rate"],
+    [/成交金额|支付金额|gmv|revenue/, "revenue"]
   ];
   for (const [pattern, key] of pairs) {
     if (pattern.test(text)) return key;
@@ -2319,7 +2380,9 @@ function normalizeMetricValue(value: unknown): number | null {
 }
 
 function normalizeRecognition(raw: any): any {
-  const metrics = Array.isArray(raw?.metrics) ? raw.metrics.slice(0, 120).map((item: any) => {
+  const fixed = normalizeFixedDouyinDashboard(raw);
+  const rawMetrics = fixed || (Array.isArray(raw?.metrics) ? raw.metrics : []);
+  const metrics = Array.isArray(rawMetrics) ? rawMetrics.slice(0, 120).map((item: any) => {
     const key = canonicalMetricKey(item.key || item.label || item.source_text);
     const def = metricDefinitions()[key] || { label: String(item.label || key).slice(0, 80), category: String(item.category || "custom").slice(0, 40), unit: String(item.unit || "").slice(0, 20) };
     return {
@@ -2334,14 +2397,74 @@ function normalizeRecognition(raw: any): any {
       comparison: typeof item.comparison === "object" && item.comparison ? item.comparison : {}
     };
   }).filter((item: any) => item.key && item.normalized_value !== null) : [];
+  console.log("LivePilot screenshot pipeline normalized metrics", {
+    platform: raw?.platform || null,
+    screenshot_type: raw?.screenshot_type || null,
+    metric_count: metrics.length,
+    metric_keys: metrics.map((item: any) => item.key),
+    metrics
+  });
   return {
-    document_type: String(raw?.document_type || "douyin_live_summary").slice(0, 80),
-    live_info: raw?.live_info || {},
+    document_type: String(raw?.document_type || raw?.screenshot_type || "douyin_live_summary").slice(0, 80),
+    live_info: normalizeLiveInfo(raw),
     metrics,
     unrecognized_fields: Array.isArray(raw?.unrecognized_fields) ? raw.unrecognized_fields.slice(0, 20) : [],
     warnings: Array.isArray(raw?.warnings) ? raw.warnings.slice(0, 20) : [],
     summary: String(raw?.summary || "").slice(0, 500)
   };
+}
+
+function isDouyinDashboardResult(raw: any): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  if (String(raw.platform || "").toLowerCase() === "douyin" && String(raw.screenshot_type || "").toLowerCase() === "live_dashboard") return true;
+  const metrics = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
+  return ["exposure_count", "enter_count", "enter_rate", "average_online", "peak_online", "average_watch_seconds"].some((key) => metrics[key] !== undefined && metrics[key] !== null && metrics[key] !== "");
+}
+
+function normalizeLiveInfo(raw: any): Record<string, unknown> {
+  const info = raw?.live_info && typeof raw.live_info === "object" ? raw.live_info : {};
+  return {
+    title: raw?.title ?? info.title ?? null,
+    started_at: raw?.start_time ?? info.started_at ?? info.start_time ?? null,
+    ended_at: raw?.end_time ?? info.ended_at ?? info.end_time ?? null,
+    duration_seconds: raw?.duration ?? info.duration_seconds ?? info.duration ?? null
+  };
+}
+
+function normalizeFixedDouyinDashboard(raw: any): any[] | null {
+  if (!isDouyinDashboardResult(raw)) return null;
+  const sourceMetrics = raw?.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
+  const aliases: Record<string, string[]> = {
+    enter_count: ["enter_count", "进房人数", "进入直播间人数", "直播间进入人数"],
+    enter_rate: ["enter_rate", "进房率", "进入率"],
+    average_watch_seconds: ["average_watch_seconds", "人均停留", "平均观看时长", "人均停留时长"],
+    peak_online: ["peak_online", "最高在线", "峰值在线"],
+    new_follow_count: ["new_follow_count", "新增关注", "涨粉"],
+    gmv: ["gmv", "成交金额", "支付金额", "GMV"],
+    order_count: ["order_count", "成交订单", "订单数"]
+  };
+  return fixedDouyinDashboardFields().map((field) => {
+    const candidateKeys = [field.source, field.key, field.label, ...(aliases[field.source] || [])];
+    const rawValue = firstPresent(sourceMetrics, candidateKeys);
+    return {
+      category: field.category,
+      key: field.key,
+      label: field.label,
+      raw_value: rawValue,
+      normalized_value: normalizeMetricValue(rawValue),
+      unit: field.unit,
+      confidence: rawValue === null || rawValue === undefined || rawValue === "" ? "low" : "high",
+      source_text: rawValue === null || rawValue === undefined || rawValue === "" ? "" : `${field.label} ${rawValue}`,
+      comparison: {}
+    };
+  }).filter((item) => item.raw_value !== null && item.raw_value !== undefined && item.raw_value !== "");
+}
+
+function firstPresent(source: Record<string, any>, keys: string[]): any {
+  for (const key of keys) {
+    if (source[key] !== undefined && source[key] !== null && source[key] !== "") return source[key];
+  }
+  return null;
 }
 
 async function applyRecognizedLiveInfo(env: Env, userId: number, sessionId: number, liveInfo: any): Promise<void> {
@@ -2550,6 +2673,46 @@ function visionPrompt(): string {
     "每个metric字段：category、key、label、raw_value、normalized_value、unit、confidence、source_text、comparison。",
     "历史对比只放在comparison里，例如较近7场+1.3万，不要和本场实际值混成一个指标。",
     "不要猜测缺失值；无法读取的字段放入unrecognized_fields或warnings。"
+  ].join("\\n");
+}
+
+function douyinDashboardPrompt(): string {
+  return [
+    "请先判断图片是否为抖音直播后台数据图。",
+    "如果是，platform必须为douyin，screenshot_type必须为live_dashboard。",
+    "如果不是，platform和screenshot_type按实际填写，metrics字段仍返回固定结构但值为null。",
+    "只抽取当前场次真实数据，不要混入较近7场、上一场、同类主播对比等历史对比。",
+    "不要解释，不要总结，不要Markdown，只返回以下JSON结构：",
+    "{",
+    '  "platform": "douyin",',
+    '  "screenshot_type": "live_dashboard",',
+    '  "title": null,',
+    '  "start_time": null,',
+    '  "duration": null,',
+    '  "metrics": {',
+    '    "exposure_count": null,',
+    '    "enter_count": null,',
+    '    "enter_rate": null,',
+    '    "viewer_count": null,',
+    '    "average_online": null,',
+    '    "peak_online": null,',
+    '    "average_watch_seconds": null,',
+    '    "comment_count": null,',
+    '    "like_count": null,',
+    '    "share_count": null,',
+    '    "new_follow_count": null,',
+    '    "fans_group_count": null,',
+    '    "yinlang": null,',
+    '    "gift_user_count": null,',
+    '    "gift_income": null,',
+    '    "gmv": null,',
+    '    "order_count": null,',
+    '    "buyer_count": null,',
+    '    "conversion_rate": null',
+    "  }",
+    "}",
+    "字段含义和别名：进房人数/进入直播间人数/直播间进入人数=enter_count；进房率/进入率=enter_rate；人均停留/平均观看时长=average_watch_seconds；最高在线/峰值在线=peak_online；新增关注/涨粉=new_follow_count；成交金额/支付金额/GMV=gmv；成交订单/订单数=order_count。",
+    "数值可保留原始中文单位，例如2.3万、5,143、22.1%、2.2分钟；空值必须返回null。"
   ].join("\\n");
 }
 

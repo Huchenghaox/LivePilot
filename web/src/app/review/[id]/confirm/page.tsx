@@ -111,11 +111,25 @@ const quickMetricOptions = [
   ["region_distribution", "地域分布", "用户画像", ""],
   ["product_clicks", "商品点击", "成交", "次"],
   ["buyers", "成交人数", "成交", "人"],
-  ["gmv", "成交金额", "成交", "元"],
+  ["revenue", "成交金额", "成交", "元"],
+  ["orders", "成交订单", "成交", "单"],
+  ["conversion_rate", "转化率", "成交", "%"],
   ["refunds", "退款情况", "成交", ""],
   ["has_violation", "是否出现违规提示", "合规", ""],
   ["violation_note", "违规提示内容", "合规", ""],
   ["custom_metric", "其他自定义指标", "自定义", ""]
+];
+
+const fixedTemplateMetricOptions = [
+  ["yinlang", "收获音浪", "营收", "音浪"],
+  ["gift_users", "送礼人数", "营收", "人"],
+  ["gift_rate", "送礼率", "营收", "%"],
+  ["gift_income", "礼物收入", "营收", "元"],
+  ["revenue", "成交金额 / GMV", "成交", "元"],
+  ["orders", "成交订单", "成交", "单"],
+  ["buyers", "成交人数", "成交", "人"],
+  ["conversion_rate", "转化率", "成交", "%"],
+  ["total_viewers", "累计观看", "流量", "人"]
 ];
 
 const coreMetricOptions = [
@@ -138,7 +152,7 @@ const coreMetricOptions = [
   ["has_violation", "是否收到违规提示", "核心数据", "", "选择即可"]
 ];
 
-const metricMeta = new Map([...coreMetricOptions, ...quickMetricOptions].map(([key, label, group, unit]) => [key, { label, group, unit }]));
+const metricMeta = new Map([...coreMetricOptions, ...quickMetricOptions, ...fixedTemplateMetricOptions].map(([key, label, group, unit]) => [key, { label, group, unit }]));
 
 const textMetricKeys = new Set([
   "live_date",
@@ -173,8 +187,14 @@ export default function ConfirmPage() {
     setError("");
     try {
       const result = await apiFetch<Metrics>(`/api/live-sessions/${params.id}/metrics`);
+      const fields = mergeTemplateFields(mergeCoreFields(result.fields?.length ? result.fields.map(normalizeField) : legacyFields(result), result));
       setMetrics(result);
-      setMetricFields(mergeCoreFields(result.fields?.length ? result.fields.map(normalizeField) : legacyFields(result), result));
+      setMetricFields(fields);
+      console.info("LivePilot screenshot pipeline frontend rendered fields count", {
+        liveSessionId: params.id,
+        fieldCount: fields.filter((field) => !field.deleted).length,
+        fieldKeys: fields.filter((field) => !field.deleted).map((field) => field.metric_key)
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载失败");
     } finally {
@@ -491,6 +511,24 @@ function mergeCoreFields(fields: MetricField[], metrics: Metrics): MetricField[]
     }
   }
   return merged.sort((a, b) => coreSort(a.metric_key) - coreSort(b.metric_key));
+}
+
+function mergeTemplateFields(fields: MetricField[]): MetricField[] {
+  const merged = [...fields];
+  for (const [metric_key, label, group, unit] of fixedTemplateMetricOptions) {
+    if (merged.some((item) => item.metric_key === metric_key)) continue;
+    merged.push({
+      metric_key,
+      label,
+      group,
+      unit,
+      final_value: "",
+      confidence: 100,
+      is_manually_confirmed: true,
+      source_screenshot_type: "待补充"
+    });
+  }
+  return merged;
 }
 
 function coreSort(key: string) {
