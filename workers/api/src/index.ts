@@ -715,7 +715,19 @@ async function getSessionMetrics(request: Request, env: Env, sessionId: number):
   const session = await ownedLiveSession(env, user.id, sessionId);
   const rows = await env.DB.prepare("SELECT * FROM review_metrics WHERE user_id=?1 AND live_session_id=?2 ORDER BY id").bind(user.id, sessionId).all();
   const metrics = metricsObject(rows.results || []);
-  return ok({ ...metrics, session, items: (rows.results || []).map(serializeMetric) });
+  const items = (rows.results || []).map(serializeMetric);
+  return ok({
+    ...metrics,
+    session,
+    session_topic: session.session_topic || session.title || "",
+    live_date: session.live_date || "",
+    main_goal: session.main_goal || "",
+    has_paid_promotion: nullableBooleanFromDb(session.has_paid_promotion),
+    has_cohost: nullableBooleanFromDb(session.has_cohost),
+    self_review: session.self_review || "",
+    items,
+    fields: items.map(metricToField)
+  });
 }
 
 async function saveSessionMetrics(request: Request, env: Env, sessionId: number): Promise<Response> {
@@ -728,7 +740,24 @@ async function saveSessionMetrics(request: Request, env: Env, sessionId: number)
   const known = metricDefinitions();
   for (const [key, def] of Object.entries(known)) {
     if (body[key] === undefined || body[key] === null || body[key] === "") continue;
-    await upsertMetric(env, user.id, sessionId, { key, label: def.label, category: def.category, raw_value: String(body[key]), normalized_value: normalizeMetricValue(body[key]), unit: def.unit, source_type: "manual_input", confidence: "manual", is_confirmed: 1 });
+    await replaceMetric(env, user.id, sessionId, { key, label: def.label, category: def.category, raw_value: String(body[key]), normalized_value: normalizeMetricValue(body[key]), unit: def.unit, source_type: "manual_input", confidence: "manual", is_confirmed: 1 });
+  }
+  if (Array.isArray(body.additional_metrics)) {
+    for (const item of body.additional_metrics.slice(0, 80) as any[]) {
+      const canonicalKey = canonicalMetricKey(item.metric_key || item.key || item.label);
+      if (!canonicalKey && !item.metric_key) continue;
+      await replaceMetric(env, user.id, sessionId, {
+        key: canonicalKey || String(item.metric_key).slice(0, 80),
+        label: String(item.label || item.metric_key || "补充指标").slice(0, 80),
+        category: groupToCategory(item.group),
+        raw_value: String(item.value ?? item.final_value ?? ""),
+        normalized_value: normalizeMetricValue(item.value ?? item.final_value),
+        unit: String(item.unit || "").slice(0, 20),
+        source_type: "screenshot_manual_confirmed",
+        confidence: "manual",
+        is_confirmed: 1
+      });
+    }
   }
   await env.DB.prepare("UPDATE live_sessions SET status='metrics_confirmed' WHERE id=?1 AND user_id=?2 AND status!='reported'").bind(sessionId, user.id).run();
   return await getSessionMetrics(request, env, sessionId);
@@ -780,10 +809,28 @@ async function recognizeSessionScreenshots(request: Request, env: Env, sessionId
 async function confirmRecognizedFields(request: Request, env: Env, sessionId: number): Promise<Response> {
   const user = await requireUser(request, env);
   await ownedLiveSession(env, user.id, sessionId);
-  const body = await readJson<{ items?: any[] }>(request);
-  if (Array.isArray(body.items)) {
-    for (const item of body.items) {
-      await upsertMetric(env, user.id, sessionId, { ...item, is_confirmed: 1, source_type: item.source_type || "screenshot_manual_confirmed" });
+  const body = await readJson<{ items?: any[]; fields?: any[] }>(request);
+  const incoming = Array.isArray(body.items) ? body.items : Array.isArray(body.fields) ? body.fields : null;
+  if (incoming) {
+    for (const item of incoming) {
+      if (item.deleted) continue;
+      const key = canonicalMetricKey(item.metric_key || item.key || item.label);
+      const raw = item.final_value ?? item.raw_value ?? item.value ?? item.normalized_value ?? "";
+      if (!key || raw === "") continue;
+      await replaceMetric(env, user.id, sessionId, {
+        key,
+        label: item.label,
+        category: groupToCategory(item.group) || item.category,
+        raw_value: String(raw),
+        normalized_value: normalizeMetricValue(raw),
+        unit: item.unit,
+        source_upload_id: item.source_screenshot_id || item.source_upload_id || null,
+        source_text: item.raw_text || item.source_text || "",
+        comparison: item.comparison || {},
+        is_confirmed: 1,
+        source_type: item.source_type || "screenshot_manual_confirmed",
+        confidence: item.confidence || "manual"
+      });
     }
   } else {
     await env.DB.prepare("UPDATE review_metrics SET is_confirmed=1, updated_at=CURRENT_TIMESTAMP WHERE user_id=?1 AND live_session_id=?2").bind(user.id, sessionId).run();
@@ -1070,12 +1117,21 @@ async function ownedReport(env: Env, userId: number, id: number): Promise<any> {
 }
 
 async function upsertMetric(env: Env, userId: number, sessionId: number, metric: any): Promise<void> {
-  const def = metricDefinitions()[metric.key] || { label: metric.label || metric.key, category: metric.category || "custom", unit: metric.unit || "" };
+  const key = canonicalMetricKey(metric.key || metric.metric_key || metric.label);
+  if (!key) return;
+  const def = metricDefinitions()[key] || { label: metric.label || key, category: metric.category || "custom", unit: metric.unit || "" };
   const rawValue = metric.raw_value ?? metric.rawValue ?? metric.value ?? "";
   const normalized = metric.normalized_value ?? normalizeMetricValue(rawValue);
   await env.DB.prepare(
     "INSERT INTO review_metrics (user_id, live_session_id, category, key, label, raw_value, normalized_value, unit, source_type, source_upload_id, source_text, confidence, comparison_json, is_confirmed) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)"
-  ).bind(userId, sessionId, metric.category || def.category, metric.key, metric.label || def.label, rawValue === "" ? null : String(rawValue), normalized, metric.unit || def.unit, metric.source_type || "manual_input", metric.source_upload_id || null, metric.source_text || "", metric.confidence || "manual", JSON.stringify(metric.comparison || {}), metric.is_confirmed ? 1 : 0).run();
+  ).bind(userId, sessionId, metric.category || def.category, key, metric.label || def.label, rawValue === "" ? null : String(rawValue), normalized, metric.unit || def.unit, metric.source_type || "manual_input", metric.source_upload_id || null, metric.source_text || "", metric.confidence || "manual", JSON.stringify(metric.comparison || {}), metric.is_confirmed ? 1 : 0).run();
+}
+
+async function replaceMetric(env: Env, userId: number, sessionId: number, metric: any): Promise<void> {
+  const key = canonicalMetricKey(metric.key || metric.metric_key || metric.label);
+  if (!key) return;
+  await env.DB.prepare("DELETE FROM review_metrics WHERE user_id=?1 AND live_session_id=?2 AND key=?3").bind(userId, sessionId, key).run();
+  await upsertMetric(env, userId, sessionId, { ...metric, key });
 }
 
 async function recognizeOneScreenshot(env: Env, user: UserRow, session: any, screenshot: any): Promise<void> {
@@ -1086,6 +1142,7 @@ async function recognizeOneScreenshot(env: Env, user: UserRow, session: any, scr
   const recognition = await recognizeScreenshotWithModel(env, bytes, screenshot.content_type, user.id);
   const normalized = normalizeRecognition(recognition);
   if (!normalized.metrics.length) throw new Error("这张截图暂时没有识别到有效指标，请手动补充数据。");
+  await applyRecognizedLiveInfo(env, user.id, session.id, normalized.live_info);
   await env.DB.prepare(
     "INSERT INTO recognition_results (user_id, live_session_id, upload_id, document_type, raw_json, normalized_json, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'needs_confirmation')"
   ).bind(user.id, session.id, screenshot.id, normalized.document_type, JSON.stringify(recognition), JSON.stringify(normalized)).run();
@@ -2091,6 +2148,27 @@ function serializeMetric(row: any): Record<string, unknown> {
   };
 }
 
+function metricToField(metric: Record<string, unknown>): Record<string, unknown> {
+  const key = String(metric.key || "");
+  const def = metricDefinitions()[key];
+  return {
+    id: metric.id,
+    metric_key: key,
+    label: metric.label || def?.label || key,
+    group: categoryToGroup(String(metric.category || def?.category || "custom")),
+    raw_value: metric.raw_value,
+    normalized_value: metric.normalized_value,
+    final_value: metric.normalized_value ?? metric.raw_value ?? "",
+    unit: metric.unit || def?.unit || "",
+    source_screenshot_id: metric.source_upload_id,
+    source_screenshot_type: sourceTypeLabel(String(metric.source_type || "")),
+    raw_text: metric.source_text || "",
+    confidence: confidenceScore(String(metric.confidence || "manual")),
+    is_manually_confirmed: Boolean(metric.is_confirmed),
+    comparison: metric.comparison || {}
+  };
+}
+
 function metricsObject(rows: any[]): Record<string, unknown> {
   const output: Record<string, unknown> = {};
   for (const row of rows) output[row.key] = row.normalized_value ?? row.raw_value ?? null;
@@ -2116,11 +2194,108 @@ function metricDefinitions(): Record<string, { label: string; category: string; 
     gift_users: { label: "送礼人数", category: "revenue", unit: "人" },
     gift_rate: { label: "送礼率", category: "revenue", unit: "%" },
     yinlang: { label: "收获音浪", category: "revenue", unit: "音浪" },
+    member_income: { label: "会员收入", category: "revenue", unit: "元" },
+    guardian_income: { label: "星守护收入", category: "revenue", unit: "元" },
     estimated_income: { label: "预计本场收入", category: "revenue", unit: "元" },
     product_clicks: { label: "商品点击", category: "conversion", unit: "次" },
     orders: { label: "成交订单", category: "conversion", unit: "单" },
     revenue: { label: "成交金额", category: "conversion", unit: "元" }
   };
+}
+
+function canonicalMetricKey(value: unknown): string {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const normalized = raw.toLowerCase().replace(/\s+/g, "_").replace(/[：:]/g, "");
+  if (metricDefinitions()[normalized]) return normalized;
+  if (normalized.startsWith("custom_")) return normalized.slice(0, 80);
+  const text = raw.toLowerCase();
+  const pairs: Array<[RegExp, string]> = [
+    [/直播时长|duration/, "duration_minutes"],
+    [/开播时间|开始时间|started_at/, "started_at"],
+    [/关播时间|结束时间|ended_at/, "ended_at"],
+    [/曝光人数|曝光|impression/, "impressions"],
+    [/进房人数|进入人数|进房\b|room_entries|entry_count/, "room_entries"],
+    [/进房率|曝光进入率|entry_rate/, "entry_rate"],
+    [/平均在线人数|平均在线|average_online/, "average_online"],
+    [/最高在线人数|最高在线|peak_online/, "peak_online"],
+    [/人均停留时长|平均停留|停留时长|average_watch|average_stay/, "average_watch_seconds"],
+    [/评论人数|评论数|comments|comment_users/, "comments"],
+    [/点赞次数|点赞数|likes/, "likes"],
+    [/分享次数|分享数|shares/, "shares"],
+    [/新增粉丝|新增关注|new_followers/, "new_followers"],
+    [/加粉丝团人数|粉丝团|fan_club/, "fan_club_joins"],
+    [/送礼人数|gift_users/, "gift_users"],
+    [/送礼率|gift_rate/, "gift_rate"],
+    [/收获音浪|音浪|yinlang/, "yinlang"],
+    [/预计本场收入|预计收入|estimated_income/, "estimated_income"],
+    [/会员收入|member_income/, "member_income"],
+    [/星守护收入|guardian_income/, "guardian_income"],
+    [/商品点击|product_clicks/, "product_clicks"],
+    [/成交人数|成交订单|orders|buyers/, "orders"],
+    [/成交金额|gmv|revenue/, "revenue"]
+  ];
+  for (const [pattern, key] of pairs) {
+    if (pattern.test(text)) return key;
+  }
+  return normalized.replace(/[^a-z0-9_]/g, "").slice(0, 80);
+}
+
+function categoryToGroup(category: string): string {
+  const map: Record<string, string> = {
+    basic: "核心数据",
+    traffic: "流量",
+    retention: "停留",
+    interaction: "互动",
+    follow: "关注",
+    revenue: "营收",
+    conversion: "成交",
+    compliance: "合规",
+    audience: "用户画像",
+    custom: "自定义"
+  };
+  return map[category] || "自定义";
+}
+
+function groupToCategory(group: unknown): string {
+  const map: Record<string, string> = {
+    核心数据: "basic",
+    流量: "traffic",
+    停留: "retention",
+    互动: "interaction",
+    关注: "follow",
+    营收: "revenue",
+    成交: "conversion",
+    合规: "compliance",
+    用户画像: "audience",
+    自定义: "custom"
+  };
+  return map[String(group || "")] || "custom";
+}
+
+function normalizeCategory(value: unknown): string {
+  const raw = String(value || "");
+  if (["basic", "traffic", "retention", "interaction", "follow", "revenue", "conversion", "compliance", "audience", "custom"].includes(raw)) return raw;
+  return groupToCategory(raw);
+}
+
+function sourceTypeLabel(sourceType: string): string {
+  if (sourceType === "screenshot_ai") return "截图AI识别";
+  if (sourceType === "screenshot_manual_confirmed") return "用户确认";
+  if (sourceType === "manual_input") return "手动录入";
+  return sourceType || "未标明";
+}
+
+function confidenceScore(confidence: string): number {
+  if (confidence === "high") return 92;
+  if (confidence === "medium") return 75;
+  if (confidence === "low") return 55;
+  return 100;
+}
+
+function nullableBooleanFromDb(value: unknown): boolean | null {
+  if (value === null || value === undefined) return null;
+  return value === 1 || value === true || value === "1" || value === "true";
 }
 
 function normalizeMetricValue(value: unknown): number | null {
@@ -2145,10 +2320,10 @@ function normalizeMetricValue(value: unknown): number | null {
 
 function normalizeRecognition(raw: any): any {
   const metrics = Array.isArray(raw?.metrics) ? raw.metrics.slice(0, 120).map((item: any) => {
-    const key = String(item.key || "").slice(0, 80);
+    const key = canonicalMetricKey(item.key || item.label || item.source_text);
     const def = metricDefinitions()[key] || { label: String(item.label || key).slice(0, 80), category: String(item.category || "custom").slice(0, 40), unit: String(item.unit || "").slice(0, 20) };
     return {
-      category: String(item.category || def.category).slice(0, 40),
+      category: normalizeCategory(item.category || def.category).slice(0, 40),
       key,
       label: String(item.label || def.label).slice(0, 80),
       raw_value: String(item.raw_value ?? "").slice(0, 120),
@@ -2167,6 +2342,36 @@ function normalizeRecognition(raw: any): any {
     warnings: Array.isArray(raw?.warnings) ? raw.warnings.slice(0, 20) : [],
     summary: String(raw?.summary || "").slice(0, 500)
   };
+}
+
+async function applyRecognizedLiveInfo(env: Env, userId: number, sessionId: number, liveInfo: any): Promise<void> {
+  if (!liveInfo || typeof liveInfo !== "object") return;
+  const title = recognizedValue(liveInfo.title);
+  const startedAt = recognizedValue(liveInfo.started_at);
+  const durationSeconds = normalizeMetricValue(recognizedValue(liveInfo.duration_seconds) ?? recognizedValue(liveInfo.duration));
+  const durationMinutes = durationSeconds ? Math.round(Number(durationSeconds) / 60) : null;
+  await env.DB.prepare(
+    "UPDATE live_sessions SET title=COALESCE(?1,title), session_topic=CASE WHEN COALESCE(session_topic,'')='' THEN COALESCE(?1,session_topic) ELSE session_topic END, live_date=COALESCE(?2,live_date), duration_minutes=COALESCE(?3,duration_minutes), updated_at=CURRENT_TIMESTAMP WHERE id=?4 AND user_id=?5"
+  ).bind(title || null, startedAt ? String(startedAt).slice(0, 32) : null, durationMinutes, sessionId, userId).run();
+  if (durationSeconds) {
+    await replaceMetric(env, userId, sessionId, {
+      key: "duration_seconds",
+      label: "直播时长",
+      category: "basic",
+      raw_value: String(recognizedValue(liveInfo.duration_seconds) ?? recognizedValue(liveInfo.duration) ?? durationSeconds),
+      normalized_value: durationSeconds,
+      unit: "秒",
+      source_type: "screenshot_ai",
+      confidence: "high",
+      is_confirmed: 0
+    });
+  }
+}
+
+function recognizedValue(value: any): string | number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "object") return value.normalized_value ?? value.raw_value ?? null;
+  return value;
 }
 
 function validatePreparePlan(result: any, streamer: any, input: any): any {
@@ -2338,7 +2543,14 @@ function modelName(env: Env, kind: "text" | "vision"): string {
 }
 
 function visionPrompt(): string {
-  return "识别抖音直播复盘截图中明确出现的直播基础信息、营收、流量、互动、关注、历史对比指标。返回JSON：document_type, live_info, metrics[], unrecognized_fields, warnings, summary。不要猜测缺失值，无法读取返回null或忽略。";
+  return [
+    "识别抖音直播复盘截图中明确出现的数据，只返回严格JSON，不要Markdown，不要分析。",
+    "live_info可包含：title、started_at、ended_at、duration_seconds。",
+    "metrics数组必须尽量使用这些标准key：yinlang(收获音浪)、gift_users(送礼人数)、gift_rate(送礼率)、member_income(会员收入)、guardian_income(星守护收入)、estimated_income(预计本场收入)、impressions(曝光人数)、room_entries(进房人数)、entry_rate(进房率)、average_online(平均在线人数)、peak_online(最高在线人数)、average_watch_seconds(人均停留时长)、comments(评论人数/评论数)、likes(点赞次数)、new_followers(新增粉丝/新增关注)、shares(分享次数)、fan_club_joins(加粉丝团人数)。",
+    "每个metric字段：category、key、label、raw_value、normalized_value、unit、confidence、source_text、comparison。",
+    "历史对比只放在comparison里，例如较近7场+1.3万，不要和本场实际值混成一个指标。",
+    "不要猜测缺失值；无法读取的字段放入unrecognized_fields或warnings。"
+  ].join("\\n");
 }
 
 function preparePlanSchemaHint(): string {

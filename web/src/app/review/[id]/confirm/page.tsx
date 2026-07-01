@@ -25,6 +25,9 @@ type MetricField = {
 };
 
 type Metrics = {
+  impressions: number | null;
+  room_entries: number | null;
+  entry_rate: number | null;
   duration_minutes: number | null;
   total_viewers: number | null;
   peak_online: number | null;
@@ -32,7 +35,15 @@ type Metrics = {
   new_followers: number | null;
   comments: number | null;
   likes: number | null;
-  average_stay_seconds: number | null;
+  shares: number | null;
+  fan_club_joins: number | null;
+  average_watch_seconds: number | null;
+  yinlang: number | null;
+  gift_users: number | null;
+  gift_rate: number | null;
+  member_income: number | null;
+  guardian_income: number | null;
+  estimated_income: number | null;
   traffic_sources: string;
   live_date?: string;
   has_paid_promotion?: boolean | null;
@@ -50,31 +61,49 @@ type Metrics = {
   fields?: MetricField[];
 };
 
-const groupOrder = ["流量", "停留", "互动", "关注", "用户画像", "成交", "合规", "自定义"];
+const groupOrder = ["营收", "流量", "停留", "互动", "关注", "用户画像", "成交", "合规", "自定义"];
 
 const legacyMap: Record<string, keyof Metrics> = {
   duration_minutes: "duration_minutes",
+  impressions: "impressions",
+  room_entries: "room_entries",
+  entry_rate: "entry_rate",
   total_viewers: "total_viewers",
   peak_online: "peak_online",
   average_online: "average_online",
   new_followers: "new_followers",
   comments: "comments",
   likes: "likes",
-  average_stay_seconds: "average_stay_seconds",
+  shares: "shares",
+  fan_club_joins: "fan_club_joins",
+  average_watch_seconds: "average_watch_seconds",
+  yinlang: "yinlang",
+  gift_users: "gift_users",
+  gift_rate: "gift_rate",
+  member_income: "member_income",
+  guardian_income: "guardian_income",
+  estimated_income: "estimated_income",
   other_traffic_sources: "traffic_sources"
 };
 
 const quickMetricOptions = [
+  ["yinlang", "收获音浪", "营收", "音浪"],
+  ["gift_users", "送礼人数", "营收", "人"],
+  ["gift_rate", "送礼率", "营收", "%"],
+  ["member_income", "会员收入", "营收", "元"],
+  ["guardian_income", "星守护收入", "营收", "元"],
+  ["estimated_income", "预计本场收入", "营收", "元"],
+  ["impressions", "曝光人数", "流量", "人"],
+  ["room_entries", "进房人数", "流量", "人"],
+  ["entry_rate", "进房率", "流量", "%"],
   ["total_viewers", "累计观看人数", "流量", "人"],
-  ["exposure_count", "曝光人数", "流量", "人"],
-  ["entry_count", "进入直播间人数", "流量", "人"],
-  ["entry_rate", "曝光进入率", "流量", "%"],
   ["recommended_traffic_ratio", "推荐流量占比", "流量", "%"],
   ["fan_traffic_ratio", "粉丝流量占比", "流量", "%"],
-  ["average_stay_seconds", "平均停留时长", "停留", "秒"],
-  ["comments", "评论数", "互动", "条"],
+  ["average_watch_seconds", "人均停留时长", "停留", "秒"],
+  ["comments", "评论人数", "互动", "人"],
   ["shares", "分享数", "互动", "次"],
   ["new_followers", "新增关注", "关注", "人"],
+  ["fan_club_joins", "加粉丝团人数", "关注", "人"],
   ["follow_rate", "观看关注率", "关注", "%"],
   ["new_vs_returning_users", "新老用户比例", "用户画像", ""],
   ["gender_distribution", "性别分布", "用户画像", ""],
@@ -92,13 +121,19 @@ const quickMetricOptions = [
 const coreMetricOptions = [
   ["live_date", "直播日期", "核心数据", "", "例如 2026-06-24"],
   ["duration_minutes", "直播时长", "核心数据", "分钟", "例如 120、2小时"],
-  ["total_viewers", "累计观看", "核心数据", "人", "例如 1.2万"],
+  ["impressions", "曝光人数", "核心数据", "人", "例如 2.3万"],
+  ["room_entries", "进房人数", "核心数据", "人", "例如 5143"],
+  ["entry_rate", "进房率", "核心数据", "%", "例如 22.1%"],
   ["peak_online", "最高在线", "核心数据", "人", "例如 320"],
   ["average_online", "平均在线", "核心数据", "人", "例如 86"],
-  ["average_stay_seconds", "平均停留", "核心数据", "秒", "例如 45秒、1分钟"],
+  ["average_watch_seconds", "人均停留", "核心数据", "秒", "例如 45秒、2.2分钟"],
   ["new_followers", "新增关注", "核心数据", "人", "例如 120"],
-  ["comments", "评论数", "核心数据", "条", "例如 860"],
+  ["comments", "评论人数", "核心数据", "人", "例如 77"],
   ["likes", "点赞数", "核心数据", "次", "例如 3.5万"],
+  ["shares", "分享次数", "核心数据", "次", "例如 5"],
+  ["fan_club_joins", "加粉丝团人数", "核心数据", "人", "例如 19"],
+  ["yinlang", "收获音浪", "核心数据", "音浪", "例如 447"],
+  ["estimated_income", "预计本场收入", "核心数据", "元", "例如 19元"],
   ["has_paid_promotion", "是否投流", "核心数据", "", "选择即可"],
   ["has_violation", "是否收到违规提示", "核心数据", "", "选择即可"]
 ];
@@ -533,7 +568,7 @@ function normalizeClientValue(value: string) {
   if (cleaned.includes("千")) number *= 1000;
   if (cleaned.includes("小时")) number *= 3600;
   else if (cleaned.includes("分钟") || cleaned.includes("分")) number *= 60;
-  return Math.round(number);
+  return Number.isInteger(number) ? number : Number(number.toFixed(2));
 }
 
 function MetricInput({ field, index, error, onUpdate }: { field: MetricField; index: number; error?: string; onUpdate: (index: number, patch: Partial<MetricField>) => void }) {
