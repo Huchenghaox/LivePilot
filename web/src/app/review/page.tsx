@@ -486,7 +486,7 @@ export default function ReviewPage() {
                 <label className="block text-sm font-medium">抖音后台截图</label>
                 <p className="mt-1 text-xs text-slate-500">支持多张截图，当前无图片模型时仍可继续手动填写。</p>
               </div>
-              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">图片模型未配置可继续</span>
+              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">可截图，也可手动录入</span>
             </div>
             <label
               className={`mb-3 block cursor-pointer rounded-2xl border border-dashed px-4 py-8 text-center transition ${dragActive ? "border-brand bg-brand/15 shadow-glow" : "border-brand/35 bg-brand/5 hover:border-brand hover:bg-brand/10"}`}
@@ -556,11 +556,11 @@ export default function ReviewPage() {
               </div>
             ) : null}
             <PrimaryButton disabled={!streamerId || working} onClick={() => createSession(Boolean(screenshots.length))}>
-              {working ? "正在创建复盘..." : screenshots.length ? "上传截图并识别" : "直接手动填写"}
+              {working ? "正在创建复盘..." : screenshots.length ? "上传截图并确认数据" : "直接手动填写"}
             </PrimaryButton>
             {createdId ? (
               <div className="mt-4 rounded-2xl border border-success/30 bg-success/10 p-4 text-sm text-success">
-                {createdWithScreenshots ? "截图识别完成。" : "复盘草稿已创建。"}请先确认关键数据，再生成报告。
+                {createdWithScreenshots ? "截图已上传。" : "复盘草稿已创建。"}请先确认或补充关键数据，再生成报告。
                 <Link className="ml-2 font-bold underline" href={`/review/${createdId}/confirm`}>去确认数据</Link>
               </div>
             ) : null}
