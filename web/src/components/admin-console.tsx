@@ -63,11 +63,24 @@ function AdminDashboard() {
   if (error) return <StatusMessage type="error" text={error} />;
   if (!data) return <StatusMessage type="loading" text="正在读取运营概览..." />;
   const labels: Record<string, string> = {
-    total_users: "总用户", active_users: "启用用户", disabled_users: "禁用用户", streamers: "主播",
-    platform_accounts: "平台账号", live_sessions: "直播复盘", screenshots: "截图上传", recognition_success: "识别成功",
-    recognition_failed: "识别失败", reports: "报告", report_failed: "需检查报告", new_users_7d: "7天新用户", active_users_7d: "7天活跃"
+    total_users: "用户总数", new_users_today: "今日新增", active_users_today: "今日活跃", active_users: "启用用户",
+    streamers: "主播档案", platform_accounts: "平台账号", preparation_plans: "开播方案", live_sessions: "直播复盘",
+    reports: "复盘报告", screenshots: "截图上传", ai_generations: "AI生成次数", model_calls: "模型调用次数",
+    model_errors: "模型错误", errors_today: "今日错误", recognition_success: "识别成功", recognition_failed: "识别失败"
   };
-  return <div className="grid gap-3 md:grid-cols-4">{Object.entries(labels).map(([key, label]) => <Metric key={key} label={label} value={data[key] ?? 0} />)}</div>;
+  return (
+    <div className="grid gap-5">
+      <Card className="relative overflow-hidden">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-brand/10 blur-3xl" />
+        <div className="relative">
+          <div className="text-sm font-semibold text-brand">运营看板</div>
+          <h2 className="mt-2 text-2xl font-bold text-slate-50">LivePilot 增长系统运行概览</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">关注用户增长、直播复盘使用、AI生成和模型错误，先发现影响上线体验的问题。</p>
+        </div>
+      </Card>
+      <div className="grid gap-3 md:grid-cols-4">{Object.entries(labels).map(([key, label]) => <Metric key={key} label={label} value={data[key] ?? 0} highlight={["new_users_today", "active_users_today", "ai_generations", "model_errors"].includes(key)} />)}</div>
+    </div>
+  );
 }
 
 function AdminModels() {
@@ -296,8 +309,16 @@ function AdminSystem() {
   return <Card><pre className="whitespace-pre-wrap text-sm text-slate-300">{JSON.stringify(data, null, 2)}</pre></Card>;
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
-  return <Card><div className="text-sm text-slate-500">{label}</div><div className="mt-2 text-2xl font-bold text-ink">{value}</div></Card>;
+function Metric({ label, value, highlight = false }: { label: string; value: number; highlight?: boolean }) {
+  return (
+    <Card className={highlight ? "border-brand/25 bg-brand/5" : ""}>
+      <div className="text-sm text-slate-400">{label}</div>
+      <div className="mt-2 text-3xl font-black text-slate-50">{value}</div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="brand-gradient h-full rounded-full" style={{ width: `${Math.min(100, Math.max(8, value ? 56 : 8))}%` }} />
+      </div>
+    </Card>
+  );
 }
 
 function Input({ label, value, onChange, type = "text", placeholder = "" }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string }) {

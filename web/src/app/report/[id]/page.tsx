@@ -159,7 +159,7 @@ export default function ReportPage() {
       <PageTitle title="直播报告" desc="先看最大问题和下一场动作，数据详情默认放在后面。" />
       {loading ? <StatusMessage type="loading" text="正在打开复盘报告..." /> : null}
       {error ? <StatusMessage type="error" text={error} onRetry={load} /> : null}
-      {message ? <div className="mb-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div> : null}
+      {message ? <div className="mb-4 rounded-2xl border border-brand/25 bg-brand/10 p-3 text-sm text-brand">{message}</div> : null}
       {report ? (
         <div className="space-y-5">
           {report.source === "mock" ? <StatusMessage type="success" text="当前报告由 Mock AI 适配层生成，用于 Beta 流程验证。接入模型 Key 后可替换为真实分析。" /> : null}
@@ -177,15 +177,16 @@ export default function ReportPage() {
                 <button className="ml-2 font-semibold underline" onClick={load}>返回当前版本</button>
               </div>
             ) : null}
-            <h2 className="mt-4 text-2xl font-bold leading-9 md:text-3xl">{report.summary}</h2>
+            <h2 className="mt-4 text-2xl font-bold leading-9 text-slate-50 md:text-3xl">{report.summary}</h2>
+            <GrowthScorecards report={report} />
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl border border-coral/25 bg-coral/10 p-4">
-                <div className="inline-flex rounded-full bg-coral/15 px-2 py-1 text-xs font-semibold text-red-700">本场最大问题</div>
-                <div className="mt-3 font-bold text-ink">{report.main_problem}</div>
+                <div className="inline-flex rounded-full bg-coral/15 px-2 py-1 text-xs font-semibold text-coral">本场最大问题</div>
+                <div className="mt-3 font-bold text-slate-50">{report.main_problem}</div>
               </div>
               <div className="rounded-2xl border border-brand/25 bg-brand/10 p-4">
                 <div className="inline-flex rounded-full bg-brand/15 px-2 py-1 text-xs font-semibold text-brand">本场最大优势</div>
-                <div className="mt-3 font-bold text-ink">{report.strength}</div>
+                <div className="mt-3 font-bold text-slate-50">{report.strength}</div>
               </div>
             </div>
             <div className="mt-5">
@@ -210,7 +211,7 @@ export default function ReportPage() {
               <Link className="inline-flex min-h-11 items-center rounded-[var(--radius-control)] border border-white/10 bg-white/[0.055] px-4 py-2.5 text-sm font-semibold text-slate-100" href={`/review/${params.id}/confirm`}>返回修改数据</Link>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <select className="rounded-[var(--radius-control)] border border-slate-300 px-3 py-2.5 text-sm" value={reportType} onChange={(event) => setReportType(event.target.value as typeof reportType)}>
+              <select className="input-dark w-auto" value={reportType} onChange={(event) => setReportType(event.target.value as typeof reportType)}>
                 <option value="simple">直接告诉我怎么改</option>
                 <option value="professional">给我专业分析</option>
                 <option value="both">两种都要</option>
@@ -226,14 +227,14 @@ export default function ReportPage() {
                 <div className="mb-3 text-sm font-semibold text-brand">核心问题 {index + 1}</div>
                 <h3 className="text-xl font-bold">{issue.title}</h3>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <Info label="判断依据" value={issue.evidence || report.history_comparison?.limitation || "当前缺少历史场次，本次主要根据单场数据分析。"} />
+                  <Info label="数据证据" value={issue.evidence || report.history_comparison?.limitation || "当前缺少历史场次，本次主要根据单场数据分析。"} />
                   <Info label="可能原因" value={issue.reason} />
                   <Info label="下一场怎么改" value={issue.fix} />
                   <Info label="验证指标" value={issue.target} />
                 </div>
-                <div className="mt-4 rounded-md bg-slate-50 p-4">
-                  <div className="mb-2 text-sm font-bold">推荐话术</div>
-                  <p className="text-sm leading-6">{issue.script}</p>
+                <div className="mt-4 rounded-2xl border border-brand/20 bg-brand/10 p-4">
+                  <div className="mb-2 text-sm font-bold text-brand">可直接使用的话术</div>
+                  <p className="text-sm leading-6 text-slate-100">{issue.script}</p>
                 </div>
               </Card>
             ))}
@@ -272,10 +273,10 @@ export default function ReportPage() {
             <h2 className="mb-3 text-lg font-bold">下一场方案</h2>
             <div className="grid gap-4">
               <Info label="推荐主题" value={(report.next_plan ?? emptyNextPlan).recommended_theme} />
-              <div className="rounded-md border border-slate-200 p-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                 <div className="mb-2 text-xs text-slate-500">5条标题</div>
                 <div className="grid gap-2 md:grid-cols-2">
-                  {(report.next_plan ?? emptyNextPlan).titles.map((title) => <div key={title} className="rounded-md bg-slate-50 p-3 text-sm">{title}</div>)}
+                  {(report.next_plan ?? emptyNextPlan).titles.map((title) => <div key={title} className="rounded-xl border border-white/10 bg-white/[0.045] p-3 text-sm text-slate-200">{title}</div>)}
                 </div>
               </div>
               <Info label="开场3分钟" value={(report.next_plan ?? emptyNextPlan).opening_3_minutes} />
@@ -286,7 +287,7 @@ export default function ReportPage() {
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={`/prepare?source_session_id=${params.id}&topic=${encodeURIComponent((report.next_plan ?? emptyNextPlan).recommended_theme)}`}
-                  className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold"
+                  className="brand-gradient inline-flex min-h-11 items-center rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-bold text-[#061016]"
                 >
                   根据本报告准备下一场
                 </Link>
@@ -297,10 +298,10 @@ export default function ReportPage() {
           <Card>
             <h2 className="mb-3 text-lg font-bold">提交反馈</h2>
             <div className="grid gap-3 md:grid-cols-[220px_1fr_auto]">
-              <select className="rounded-md border border-slate-300 px-3 py-2 text-sm" value={feedbackType} onChange={(event) => setFeedbackType(event.target.value)}>
+              <select className="input-dark" value={feedbackType} onChange={(event) => setFeedbackType(event.target.value)}>
                 {["报告有帮助", "数据判断不准确", "建议太空泛", "建议不适合我的直播", "规则依据有问题", "操作遇到问题", "其他"].map((item) => <option key={item}>{item}</option>)}
               </select>
-              <input className="rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="补充说明，可不填" value={feedbackContent} onChange={(event) => setFeedbackContent(event.target.value)} />
+              <input className="input-dark" placeholder="补充说明，可不填" value={feedbackContent} onChange={(event) => setFeedbackContent(event.target.value)} />
               <PrimaryButton onClick={submitFeedback}>提交反馈</PrimaryButton>
             </div>
           </Card>
@@ -310,10 +311,10 @@ export default function ReportPage() {
               {!versions.length ? <StatusMessage type="empty" text="暂无历史版本。" /> : null}
               <div className="mt-4 space-y-2">
                 {versions.map((item) => (
-                  <div key={item.id} className="rounded-md border border-slate-200 p-3 text-sm">
+                  <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm">
                     <div className="font-semibold">v{item.version_number}{item.is_current ? " · 当前版本" : ""}</div>
                     <div className="mt-1 text-xs text-slate-500">{item.report_type} · {item.model_name || item.source} · {new Date(item.created_at).toLocaleString("zh-CN")}</div>
-                    <button className="mt-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold" onClick={() => openVersion(item)}>查看这个版本</button>
+                    <button className="mt-2 rounded-xl border border-white/10 bg-white/[0.055] px-3 py-1.5 text-xs font-semibold text-slate-100" onClick={() => openVersion(item)}>查看这个版本</button>
                   </div>
                 ))}
               </div>
@@ -356,7 +357,7 @@ function ActionCard({
         <div className="brand-gradient flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-[#061016]">{index + 1}</div>
         <div className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusClass}`}>{task?.status || "未填写"}</div>
       </div>
-      <div className="font-bold leading-6 text-ink">{action}</div>
+      <div className="font-bold leading-6 text-slate-50">{action}</div>
       <div className="mt-4 grid gap-3 text-xs text-slate-500">
         <div><span className="text-slate-400">执行时间：</span>{extractTime(action, index)}</div>
         <div><span className="text-slate-400">可以直接说：</span>{issue?.script || report.next_plan?.opening_3_minutes || "按本场主题先讲清楚今天适合谁、能解决什么。"}</div>
@@ -365,10 +366,10 @@ function ActionCard({
       <button className="mt-4 rounded-[var(--radius-control)] border border-white/10 bg-white/[0.055] px-3 py-1.5 text-xs font-semibold text-slate-100" onClick={() => onCopy(issue?.script || action)}>复制话术</button>
       {task ? (
         <div className="mt-3 grid gap-2">
-          <select className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" value={task.status} onChange={(event) => onTaskChange(task, { status: event.target.value })}>
+          <select className="input-dark px-2 py-1.5 text-xs" value={task.status} onChange={(event) => onTaskChange(task, { status: event.target.value })}>
             {["未完成", "已执行", "部分执行", "未执行", "不适用"].map((item) => <option key={item}>{item}</option>)}
           </select>
-          <input className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" placeholder="执行备注" value={task.remark || ""} onChange={(event) => onTaskChange(task, { remark: event.target.value })} />
+          <input className="input-dark px-2 py-1.5 text-xs" placeholder="执行备注" value={task.remark || ""} onChange={(event) => onTaskChange(task, { remark: event.target.value })} />
         </div>
       ) : null}
     </div>
@@ -379,6 +380,33 @@ function extractTime(action: string, index: number) {
   const match = action.match(/开播前?\d+分钟|第\s?\d+\s?分钟|每\s?\d+\s?分钟|开场\s?\d+\s?分钟/);
   if (match) return match[0];
   return ["开场前 3 分钟", "直播中段", "下播前 10 分钟"][index] ?? "下一场直播中";
+}
+
+function GrowthScorecards({ report }: { report: Report }) {
+  const issueCount = report.issues?.length || 0;
+  const actionCount = report.next_actions?.length || 0;
+  const ruleCount = report.rule_snapshot?.length || 0;
+  const quality = report.summary && actionCount ? 86 : 68;
+  const cards = [
+    { label: "诊断完整度", value: `${quality}`, suffix: "分", text: "是否给出结论、证据和动作" },
+    { label: "关键问题", value: `${issueCount}`, suffix: "个", text: "按优先级处理，不一次改太多" },
+    { label: "下一场动作", value: `${actionCount}`, suffix: "个", text: "每个动作都要可执行、可验证" },
+    { label: "规则依据", value: `${ruleCount}`, suffix: "条", text: "用于风险提醒和话术边界" }
+  ];
+  return (
+    <div className="mt-5 grid gap-3 md:grid-cols-4">
+      {cards.map((card) => (
+        <div key={card.label} className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+          <div className="text-xs font-semibold text-slate-500">{card.label}</div>
+          <div className="mt-2 flex items-end gap-1">
+            <span className="text-3xl font-black text-slate-50">{card.value}</span>
+            <span className="pb-1 text-sm text-slate-400">{card.suffix}</span>
+          </div>
+          <div className="mt-2 text-xs leading-5 text-slate-500">{card.text}</div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function historyText(report: Report) {
@@ -393,19 +421,19 @@ function historyText(report: Report) {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-slate-200 p-3">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
       <div className="mb-1 text-xs text-slate-500">{label}</div>
-      <div className="text-sm leading-6">{value}</div>
+      <div className="text-sm leading-6 text-slate-200">{value}</div>
     </div>
   );
 }
 
 function PlanList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-md border border-slate-200 p-3">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
       <div className="mb-2 text-xs text-slate-500">{title}</div>
       <div className="grid gap-2 md:grid-cols-3">
-        {items.map((item) => <div key={item} className="rounded-md bg-slate-50 p-3 text-sm leading-6">{item}</div>)}
+        {items.map((item) => <div key={item} className="rounded-xl border border-white/10 bg-white/[0.045] p-3 text-sm leading-6 text-slate-200">{item}</div>)}
       </div>
     </div>
   );

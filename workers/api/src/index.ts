@@ -293,16 +293,23 @@ async function adminDashboard(env: Env): Promise<Response> {
   const count = async (sql: string, ...params: unknown[]) => (await env.DB.prepare(sql).bind(...params).first<{ n: number }>())?.n || 0;
   return ok({
     total_users: await count("SELECT COUNT(*) AS n FROM users WHERE deleted_at IS NULL"),
+    new_users_today: await count("SELECT COUNT(*) AS n FROM users WHERE deleted_at IS NULL AND date(created_at)=date('now')"),
     active_users: await count("SELECT COUNT(*) AS n FROM users WHERE status='active' AND deleted_at IS NULL"),
+    active_users_today: await count("SELECT COUNT(*) AS n FROM users WHERE status='active' AND deleted_at IS NULL AND date(last_login_at)=date('now')"),
     disabled_users: await count("SELECT COUNT(*) AS n FROM users WHERE status!='active' AND deleted_at IS NULL"),
     streamers: await count("SELECT COUNT(*) AS n FROM streamers"),
     platform_accounts: await count("SELECT COUNT(*) AS n FROM platform_accounts"),
+    preparation_plans: await count("SELECT COUNT(*) AS n FROM preparation_plans"),
     live_sessions: await count("SELECT COUNT(*) AS n FROM live_sessions"),
     screenshots: await count("SELECT COUNT(*) AS n FROM live_session_screenshots"),
     recognition_success: await count("SELECT COUNT(*) AS n FROM live_session_screenshots WHERE recognition_status IN ('recognized','needs_confirmation','confirmed')"),
     recognition_failed: await count("SELECT COUNT(*) AS n FROM live_session_screenshots WHERE recognition_status='failed'"),
     reports: await count("SELECT COUNT(*) AS n FROM review_reports"),
     report_failed: await count("SELECT COUNT(*) AS n FROM review_reports WHERE quality_status!='passed'"),
+    ai_generations: await count("SELECT COUNT(*) AS n FROM ai_operation_logs WHERE operation IN ('prepare_plan','diagnostic_report','screenshot_recognition')"),
+    model_calls: await count("SELECT COUNT(*) AS n FROM ai_operation_logs"),
+    model_errors: await count("SELECT COUNT(*) AS n FROM ai_operation_logs WHERE status='failed'"),
+    errors_today: await count("SELECT COUNT(*) AS n FROM ai_operation_logs WHERE status='failed' AND date(created_at)=date('now')"),
     new_users_7d: await count("SELECT COUNT(*) AS n FROM users WHERE created_at >= datetime('now','-7 days')"),
     active_users_7d: await count("SELECT COUNT(*) AS n FROM users WHERE last_login_at >= datetime('now','-7 days')")
   });
@@ -592,11 +599,13 @@ async function createPreparePlan(request: Request, env: Env): Promise<Response> 
   const accountId = body.platform_account_id ? Number(body.platform_account_id) : null;
   const streamer = await ownedStreamer(env, user.id, streamerId);
   if (accountId) await ownedPlatformAccount(env, user.id, accountId);
+  if (body.source_review_id) await ownedLiveSession(env, user.id, Number(body.source_review_id));
+  if (body.source_report_id) await ownedReport(env, user.id, Number(body.source_report_id));
   const topic = String(body.topic || "").trim();
   if (!topic) throw new HttpError(400, "请先填写下一场直播主题。");
   let plan: any;
   try {
-    plan = await generatePreparePlanContent(env, streamer, {
+    plan = await generatePreparePlanContent(env, user.id, streamer, {
       topic,
       duration_minutes: Number(body.duration_minutes || 90),
       goal: String(body.goal || "留得更久"),
@@ -801,7 +810,7 @@ async function generateSessionReport(request: Request, env: Env, sessionId: numb
   const rules = await effectiveRules(env, user.id);
   let reportJson: any;
   try {
-    reportJson = await generateDiagnosticReport(env, session, metricsRows.map(serializeMetric), previousRows, rules);
+    reportJson = await generateDiagnosticReport(env, user.id, session, metricsRows.map(serializeMetric), previousRows, rules);
   } catch (error) {
     if (error instanceof HttpError) throw error;
     const message = modelErrorMessage(error);
@@ -867,6 +876,8 @@ async function latestGrowthTasks(request: Request, env: Env, streamerId: number)
 async function createFeedback(request: Request, env: Env): Promise<Response> {
   const user = await requireUser(request, env);
   const body = await readJson<Record<string, unknown>>(request);
+  if (body.streamer_id) await ownedStreamer(env, user.id, Number(body.streamer_id));
+  if (body.platform_account_id) await ownedPlatformAccount(env, user.id, Number(body.platform_account_id));
   if (body.live_session_id) await ownedLiveSession(env, user.id, Number(body.live_session_id));
   if (body.report_id) await ownedReport(env, user.id, Number(body.report_id));
   await env.DB.prepare("INSERT INTO feedback (user_id, streamer_id, platform_account_id, live_session_id, report_id, feedback_type, content) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)")
@@ -1072,7 +1083,7 @@ async function recognizeOneScreenshot(env: Env, user: UserRow, session: any, scr
   const object = await env.UPLOADS.get(screenshot.r2_object_key);
   if (!object) throw new Error("截图文件不存在");
   const bytes = new Uint8Array(await object.arrayBuffer());
-  const recognition = await recognizeScreenshotWithModel(env, bytes, screenshot.content_type);
+  const recognition = await recognizeScreenshotWithModel(env, bytes, screenshot.content_type, user.id);
   const normalized = normalizeRecognition(recognition);
   if (!normalized.metrics.length) throw new Error("这张截图暂时没有识别到有效指标，请手动补充数据。");
   await env.DB.prepare(
@@ -1084,7 +1095,7 @@ async function recognizeOneScreenshot(env: Env, user: UserRow, session: any, scr
   await env.DB.prepare("UPDATE live_session_screenshots SET recognition_status='needs_confirmation', updated_at=CURRENT_TIMESTAMP WHERE id=?1 AND user_id=?2").bind(screenshot.id, user.id).run();
 }
 
-async function recognizeScreenshotWithModel(env: Env, bytes: Uint8Array, contentType: string): Promise<any> {
+async function recognizeScreenshotWithModel(env: Env, bytes: Uint8Array, contentType: string, userId?: number): Promise<any> {
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return mockRecognition();
   const config = await modelCallConfig(env, "vision");
   if (!config) throw new HttpError(400, "未配置视觉模型，暂时无法识别截图；文本功能可正常使用。");
@@ -1096,21 +1107,21 @@ async function recognizeScreenshotWithModel(env: Env, bytes: Uint8Array, content
       { type: "text", text: visionPrompt() },
       { type: "image_url", image_url: { url: dataUrl } }
     ] }
-  ], config, 2500);
+  ], config, 2500, { userId, operation: "screenshot_recognition", purpose: "vision" });
 }
 
-async function generatePreparePlanContent(env: Env, streamer: any, input: any): Promise<any> {
+async function generatePreparePlanContent(env: Env, userId: number, streamer: any, input: any): Promise<any> {
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return deterministicPreparePlan(streamer, input);
   const config = await modelCallConfig(env, "preparation");
   if (!config) throw new HttpError(400, "文字分析模型暂未配置，请先配置模型后再生成开播方案。");
   const result = await callOpenAIJson(env, config.model, [
     { role: "system", content: "你是LivePilot直播增长导师。只返回短JSON，不要Markdown。每个字段尽量简短、具体、可执行。" },
     { role: "user", content: JSON.stringify({ task: "generate_preparation_plan", streamer: { name: streamer.name, direction: streamer.direction, improvement_goal: streamer.improvement_goal }, input, schema: preparePlanSchemaHint() }) }
-  ], config, 900);
+  ], config, 900, { userId, operation: "prepare_plan", purpose: "preparation" });
   return validatePreparePlan(result, streamer, input);
 }
 
-async function generateDiagnosticReport(env: Env, session: any, metrics: any[], previousSessions: any[], rules: any[]): Promise<any> {
+async function generateDiagnosticReport(env: Env, userId: number, session: any, metrics: any[], previousSessions: any[], rules: any[]): Promise<any> {
   const context = { session, metrics, previousSessions, rules };
   if (env.MODEL_PROVIDER === "mock" && isDev(env)) return deterministicDiagnostic(context);
   const config = await modelCallConfig(env, "report");
@@ -1124,17 +1135,20 @@ async function generateDiagnosticReport(env: Env, session: any, metrics: any[], 
   const result = await callOpenAIJson(env, config.model, [
     { role: "system", content: "你是LivePilot AI直播增长导师。只返回短JSON，不要Markdown。必须基于数据指出最大瓶颈，给最多3个下一场动作，每个动作含时间、做法、话术、观察指标。不要空泛建议。" },
     { role: "user", content: JSON.stringify({ task: "generate_live_growth_report", context: compactContext, schema: reportSchemaHint() }) }
-  ], config, 1800);
+  ], config, 1800, { userId, operation: "diagnostic_report", purpose: "report" });
   return validateReportShape(result, context);
 }
 
-async function callOpenAIJson(env: Env, model: string, messages: any[], config?: ModelCallConfig | ModelRuntimeConfig, maxTokens = 2200): Promise<any> {
+async function callOpenAIJson(env: Env, model: string, messages: any[], config?: ModelCallConfig | ModelRuntimeConfig, maxTokens = 2200, log?: { userId?: number; operation: string; purpose: ModelPurpose | "admin" }): Promise<any> {
   const runtime = config || await modelCallConfig(env, "text");
   if (!runtime) throw new HttpError(400, "模型尚未配置。");
   if (!runtime.baseUrl || !runtime.apiKey) throw new HttpError(400, "模型尚未配置。");
   assertSafeModelBaseUrl(runtime.baseUrl, env);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), runtime.timeoutMs);
+  const started = Date.now();
+  let status = "success";
+  let errorMessage = "";
   try {
     const body = { model, messages, response_format: { type: "json_object" }, temperature: 0.2, max_tokens: maxTokens };
     let response = await fetch(`${runtime.baseUrl.replace(/\/$/, "")}/chat/completions`, {
@@ -1161,8 +1175,24 @@ async function callOpenAIJson(env: Env, model: string, messages: any[], config?:
     const text = data.choices?.[0]?.message?.content;
     if (!text) throw new Error("模型返回为空");
     return parseModelJson(text);
+  } catch (error) {
+    status = "failed";
+    errorMessage = modelErrorMessage(error);
+    throw error;
   } finally {
     clearTimeout(timeout);
+    if (log) {
+      await logAiOperation(env, {
+        userId: log.userId,
+        operation: log.operation,
+        purpose: String(log.purpose),
+        provider: runtime.provider,
+        modelName: model,
+        status,
+        latencyMs: Date.now() - started,
+        errorMessage
+      }).catch((error) => console.error("AI operation log failed", safeErrorLog(error, { operation: log.operation })));
+    }
   }
 }
 
@@ -1490,7 +1520,7 @@ async function testAssignedModel(request: Request, env: Env, admin: UserRow, kin
       await callOpenAIJson(env, config.model, [
         { role: "system", content: "只返回JSON。" },
         { role: "user", content: "请返回 {\"ok\": true, \"message\": \"文本模型测试成功\"}" }
-      ], config);
+      ], config, 2200, { userId: admin.id, operation: "admin_model_test", purpose: "admin" });
     }
     await audit(env, admin, `admin.model_assignment.test_${kind}`, "model_assignment", "1", "success", { model: config.model, elapsed_ms: Date.now() - started }, request);
     return ok({ ok: true, status: "success", model_name: config.model, elapsed_ms: Date.now() - started, message: kind === "vision" ? "视觉模型测试成功。" : "文本模型测试成功。" });
@@ -1562,7 +1592,7 @@ async function testAdminModel(request: Request, env: Env, admin: UserRow, kind: 
       if (!config.visionModel) throw new HttpError(400, "图片识别模型名称未配置。");
       if (isKnownTextOnlyModel(config.visionModel)) throw new HttpError(400, "当前图片模型不是多模态/视觉模型。请填写支持图片输入的模型名；文本模型 glm-5.1 可以继续用于开播方案和复盘报告。");
       const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
-      await recognizeScreenshotWithModel(env, png, "image/png");
+      await recognizeScreenshotWithModel(env, png, "image/png", admin.id);
     }
     const ms = Date.now() - started;
     await env.DB.prepare("UPDATE system_model_configs SET last_test_status='success', last_test_message=?1, last_tested_at=CURRENT_TIMESTAMP WHERE enabled=1").bind(`${kind === "text" ? "文本" : "图片"}模型连接成功，用时 ${ms}ms。`).run();
@@ -1618,7 +1648,7 @@ async function callVisionTest(env: Env, config: ModelCallConfig): Promise<void> 
       { type: "text", text: "请观察图片并返回 {\"ok\": true, \"message\": \"视觉模型测试成功\"}" },
       { type: "image_url", image_url: { url: dataUrl } }
     ] }
-  ], config);
+  ], config, 2200, { operation: "admin_model_test", purpose: "vision" });
 }
 
 function nullableProviderId(value: unknown): number | null {
@@ -1805,6 +1835,31 @@ async function audit(env: Env, admin: UserRow, action: string, targetType: strin
   const ipHash = request ? await hmacHex(env, clientIp(request)) : "";
   await env.DB.prepare("INSERT INTO admin_audit_logs (admin_user_id, action, target_type, target_id, result, metadata, ip_hash) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)")
     .bind(admin.id, action, targetType, targetId, result, JSON.stringify(sanitizeAudit(metadata)), ipHash).run();
+}
+
+async function logAiOperation(env: Env, item: {
+  userId?: number;
+  operation: string;
+  purpose: string;
+  provider: string;
+  modelName: string;
+  status: string;
+  latencyMs: number;
+  errorMessage?: string;
+}): Promise<void> {
+  await env.DB.prepare(`
+    INSERT INTO ai_operation_logs (user_id, operation, purpose, provider, model_name, status, latency_ms, error_message)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+  `).bind(
+    item.userId || null,
+    item.operation.slice(0, 80),
+    item.purpose.slice(0, 40),
+    item.provider.slice(0, 80),
+    item.modelName.slice(0, 120),
+    item.status === "failed" ? "failed" : "success",
+    Math.max(0, Math.round(item.latencyMs || 0)),
+    (item.errorMessage || "").slice(0, 240)
+  ).run();
 }
 
 function sanitizeAudit(metadata: Record<string, unknown>): Record<string, unknown> {
