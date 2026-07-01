@@ -5,22 +5,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#F4F7FB",
-        muted: "#9CA6B8",
-        soft: "#0B0B10",
-        panel: "#17171F",
-        panel2: "#1C1C25",
-        line: "rgba(255,255,255,0.10)",
-        brand: "#25F4EE",
-        brand2: "#20D8D2",
-        coral: "#FE2C55",
-        warning: "#F59E0B",
-        success: "#22C55E",
-        danger: "#FB7185"
+        ink: "#202123",
+        muted: "#6B6F76",
+        soft: "#F7F7F4",
+        panel: "#FFFFFF",
+        panel2: "#FBFBF8",
+        line: "rgba(32,33,35,0.10)",
+        brand: "#10A37F",
+        brand2: "#0E8F70",
+        coral: "#D74F4F",
+        warning: "#B7791F",
+        success: "#168A63",
+        danger: "#C2413F"
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(37,244,238,0.14), 0 18px 50px rgba(0,0,0,0.36)",
-        card: "0 20px 70px rgba(0,0,0,0.28)"
+        glow: "0 1px 2px rgba(15,15,15,0.08)",
+        card: "0 1px 2px rgba(15,15,15,0.04), 0 16px 40px rgba(15,15,15,0.04)"
       }
     }
   },

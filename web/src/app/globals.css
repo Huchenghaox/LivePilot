@@ -3,28 +3,28 @@
 @tailwind utilities;
 
 :root {
-  color: #e8edf7;
-  background: #0b0b10;
-  color-scheme: dark;
-  --bg: #0b0b10;
-  --bg-soft: #101016;
-  --panel: #17171f;
-  --panel-2: #1c1c25;
-  --panel-3: #222331;
-  --line: rgba(255, 255, 255, 0.1);
-  --line-strong: rgba(255, 255, 255, 0.16);
-  --text: #e8edf7;
-  --text-strong: #f6f8fc;
-  --muted: #9ca6b8;
-  --muted-2: #6f7a8f;
-  --brand: #25f4ee;
-  --brand-2: #20d8d2;
-  --coral: #fe2c55;
-  --warning: #f59e0b;
-  --success: #22c55e;
-  --danger: #fb7185;
-  --radius-card: 18px;
-  --radius-control: 12px;
+  color: #202123;
+  background: #f7f7f4;
+  color-scheme: light;
+  --bg: #f7f7f4;
+  --bg-soft: #f1f1ee;
+  --panel: #ffffff;
+  --panel-2: #fbfbf8;
+  --panel-3: #f3f3ef;
+  --line: rgba(32, 33, 35, 0.1);
+  --line-strong: rgba(32, 33, 35, 0.18);
+  --text: #202123;
+  --text-strong: #0f0f0f;
+  --muted: #6b6f76;
+  --muted-2: #9a9da3;
+  --brand: #10a37f;
+  --brand-2: #0e8f70;
+  --coral: #d74f4f;
+  --warning: #b7791f;
+  --success: #168a63;
+  --danger: #c2413f;
+  --radius-card: 16px;
+  --radius-control: 10px;
 }
 
 * {
@@ -37,9 +37,8 @@ body {
   font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(37, 244, 238, 0.12), transparent 30rem),
-    radial-gradient(circle at top right, rgba(254, 44, 85, 0.12), transparent 28rem),
-    linear-gradient(135deg, #0b0b10 0%, #101016 52%, #121218 100%);
+    radial-gradient(circle at 12% 0%, rgba(16, 163, 127, 0.08), transparent 28rem),
+    linear-gradient(180deg, #fbfbf8 0%, #f7f7f4 38%, #f1f1ee 100%);
 }
 
 button,
@@ -63,7 +62,7 @@ input,
 select,
 textarea {
   color: var(--text);
-  background: rgba(23, 23, 31, 0.88);
+  background: rgba(255, 255, 255, 0.92);
   border-color: var(--line-strong);
 }
 
@@ -75,8 +74,8 @@ textarea::placeholder {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: rgba(37, 244, 238, 0.72);
-  box-shadow: 0 0 0 3px rgba(37, 244, 238, 0.12);
+  border-color: rgba(16, 163, 127, 0.62);
+  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.12);
   outline: none;
 }
 
@@ -84,28 +83,28 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text);
-  box-shadow: 0 0 0 1000px #17171f inset;
+  box-shadow: 0 0 0 1000px #ffffff inset;
   caret-color: var(--text);
 }
 
 select option {
   color: var(--text);
-  background: #17171f;
+  background: #ffffff;
 }
 
 .glass-panel {
-  background: linear-gradient(180deg, rgba(28, 28, 37, 0.94), rgba(17, 17, 24, 0.92));
+  background: rgba(255, 255, 255, 0.86);
   border: 1px solid var(--line);
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(18px);
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.04), 0 16px 40px rgba(15, 15, 15, 0.04);
+  backdrop-filter: blur(14px);
 }
 
 .brand-gradient {
-  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 45%, var(--coral) 100%);
+  background: var(--text-strong);
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, var(--brand), var(--coral));
+  background: linear-gradient(135deg, var(--text-strong), var(--brand));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -125,7 +124,7 @@ select option {
   min-height: 44px;
   border-radius: var(--radius-control);
   border: 1px solid var(--line-strong);
-  background: rgba(23, 23, 31, 0.88);
+  background: rgba(255, 255, 255, 0.92);
   padding: 0.625rem 0.75rem;
   color: var(--text);
 }
@@ -133,20 +132,20 @@ select option {
 /* Compatibility layer for existing Tailwind utility-heavy pages. */
 .bg-soft,
 .bg-white {
-  background-color: rgba(23, 23, 31, 0.88) !important;
+  background-color: var(--bg-soft) !important;
 }
 
 .bg-slate-50,
 .bg-slate-100 {
-  background-color: rgba(255, 255, 255, 0.045) !important;
+  background-color: rgba(255, 255, 255, 0.82) !important;
 }
 
 .bg-emerald-50 {
-  background-color: rgba(37, 244, 238, 0.1) !important;
+  background-color: rgba(16, 163, 127, 0.08) !important;
 }
 
 .bg-red-50 {
-  background-color: rgba(254, 44, 85, 0.11) !important;
+  background-color: rgba(194, 65, 63, 0.08) !important;
 }
 
 .bg-amber-50 {
@@ -159,6 +158,46 @@ select option {
 .border-red-200,
 .border-amber-200 {
   border-color: var(--line) !important;
+}
+
+.border-white\/10,
+.border-white\/\[0\.10\] {
+  border-color: var(--line) !important;
+}
+
+.bg-white\/\[0\.04\],
+.bg-white\/\[0\.045\],
+.bg-white\/\[0\.055\],
+.bg-white\/5,
+.bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.bg-black\/15,
+.bg-black\/20 {
+  background-color: rgba(32, 33, 35, 0.04) !important;
+}
+
+.bg-panel\/70,
+.bg-panel\/80,
+.bg-panel\/90 {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.bg-brand\/5,
+.bg-brand\/10,
+.bg-brand\/15,
+.bg-brand\/20 {
+  background-color: rgba(16, 163, 127, 0.08) !important;
+}
+
+.border-brand\/20,
+.border-brand\/25,
+.border-brand\/30,
+.border-brand\/35,
+.border-brand\/40,
+.border-brand\/60 {
+  border-color: rgba(16, 163, 127, 0.22) !important;
 }
 
 .text-ink,
@@ -177,9 +216,20 @@ select option {
   color: var(--muted-2) !important;
 }
 
+.text-slate-50,
+.text-slate-100,
+.text-slate-200,
+.text-slate-300 {
+  color: var(--text-strong) !important;
+}
+
 .text-brand,
 .text-emerald-700 {
   color: var(--brand) !important;
+}
+
+.text-\[\#061016\] {
+  color: #ffffff !important;
 }
 
 .text-red-700,
@@ -193,11 +243,11 @@ select option {
 }
 
 .border-brand {
-  border-color: rgba(37, 244, 238, 0.72) !important;
+  border-color: rgba(16, 163, 127, 0.62) !important;
 }
 
 .bg-brand {
-  background: linear-gradient(135deg, var(--brand), var(--brand-2), var(--coral)) !important;
+  background: var(--brand) !important;
 }
 
 .bg-coral {
@@ -210,7 +260,7 @@ summary {
 }
 
 details {
-  background-color: rgba(23, 23, 31, 0.72);
+  background-color: rgba(255, 255, 255, 0.78);
   border-color: var(--line) !important;
 }
 
@@ -226,15 +276,26 @@ a.border-slate-300,
 button.border-slate-200,
 a.border-slate-200 {
   color: var(--text);
-  background-color: rgba(255, 255, 255, 0.045);
+  background-color: rgba(255, 255, 255, 0.72);
+}
+
+.shadow-glow,
+.shadow-card {
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.04), 0 16px 40px rgba(15, 15, 15, 0.04) !important;
+}
+
+textarea.bg-black\/20,
+input.bg-black\/20,
+select.bg-black\/20 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
 }
 
 button.border-slate-300:hover,
 a.border-slate-300:hover,
 button.border-slate-200:hover,
 a.border-slate-200:hover {
-  border-color: rgba(37, 244, 238, 0.5) !important;
-  background-color: rgba(255, 255, 255, 0.075);
+  border-color: rgba(16, 163, 127, 0.36) !important;
+  background-color: rgba(255, 255, 255, 0.94);
 }
 
 button.border-red-300,
@@ -242,8 +303,8 @@ button.border-red-200,
 a.border-red-300,
 a.border-red-200 {
   color: var(--danger) !important;
-  border-color: rgba(251, 113, 133, 0.35) !important;
-  background-color: rgba(251, 113, 133, 0.08);
+  border-color: rgba(194, 65, 63, 0.28) !important;
+  background-color: rgba(194, 65, 63, 0.07);
 }
 
 input[type="checkbox"] {

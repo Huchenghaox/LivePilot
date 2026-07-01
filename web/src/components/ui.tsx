@@ -1,11 +1,11 @@
 export function PageTitle({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="mb-6">
-      <div className="mb-2 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-brand">
-        Beta 截图复盘
+    <div className="mb-8">
+      <div className="mb-3 inline-flex rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+        LivePilot Beta
       </div>
-      <h1 className="text-2xl font-bold tracking-normal text-ink md:text-3xl">{title}</h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{desc}</p>
+      <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">{title}</h1>
+      <p className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500">{desc}</p>
     </div>
   );
 }
@@ -19,7 +19,7 @@ export function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElemen
     <button
       {...props}
       type={props.type || "button"}
-      className={`focus-ring brand-gradient min-h-11 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-bold text-[#061016] shadow-glow hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-45 ${props.className || ""}`}
+      className={`focus-ring min-h-11 rounded-[var(--radius-control)] bg-[#202123] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-black disabled:opacity-45 ${props.className || ""}`}
     />
   );
 }
@@ -29,7 +29,7 @@ export function SecondaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElem
     <button
       {...props}
       type={props.type || "button"}
-      className={`focus-ring min-h-11 rounded-[var(--radius-control)] border border-white/10 bg-white/[0.055] px-4 py-2.5 text-sm font-semibold text-slate-100 hover:border-brand/60 hover:bg-white/[0.08] disabled:opacity-45 ${props.className || ""}`}
+      className={`focus-ring min-h-11 rounded-[var(--radius-control)] border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-45 ${props.className || ""}`}
     />
   );
 }
@@ -38,14 +38,14 @@ export function StatusMessage({ type, text, onRetry }: { type: "empty" | "loadin
   const color = type === "error"
     ? "border-red-400/25 bg-red-500/10 text-red-200"
     : type === "success"
-      ? "border-brand/25 bg-brand/10 text-brand"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
       : type === "warning"
         ? "border-amber-400/25 bg-amber-500/10 text-amber-200"
       : type === "loading"
-        ? "border-brand/20 bg-brand/10 text-brand"
-        : "border-white/10 bg-white/[0.045] text-slate-400";
+        ? "border-black/10 bg-white text-slate-600"
+        : "border-black/10 bg-white text-slate-500";
   return (
-    <div className={`rounded-2xl border p-4 text-sm leading-6 ${color}`}>
+    <div className={`rounded-2xl border p-4 text-sm leading-6 shadow-sm ${color}`}>
       <div>{text}</div>
       {onRetry ? (
         <button className="mt-3 rounded-md border border-current px-3 py-1 text-xs font-semibold" onClick={onRetry}>
