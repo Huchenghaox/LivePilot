@@ -30,7 +30,10 @@ type Dashboard = {
     strength: string;
     first_action: string;
   };
-  tasks: { id: number; action: string; status: string; improvement: string }[];
+  recent_session?: null | { id: number; title: string; created_at: string; status: string };
+  recent_report?: null | { id: number; summary: string; created_at: string };
+  recent_plan?: null | { id: number; topic: string; created_at: string };
+  tasks?: { id: number; action: string; status: string; improvement: string }[];
   task_execution_summary?: {
     total: number;
     summary: string;
@@ -93,6 +96,17 @@ export default function HomePage() {
   }, [streamerId, platformAccountId]);
 
   const visibleAccounts = accounts.filter((account) => !streamerId || account.anchor?.id === Number(streamerId));
+  const tasks = data?.tasks ?? [];
+  const latestSession = data?.latest_session ?? (data?.recent_session || data?.recent_report ? {
+    id: data.recent_session?.id ?? data.recent_report?.id ?? 0,
+    title: data.recent_session?.title || "最近一场直播",
+    created_at: data.recent_report?.created_at || data.recent_session?.created_at || "",
+    status: data.recent_session?.status || "reported",
+    summary: data.recent_report?.summary || "报告已生成，请查看详情。",
+    main_problem: "请进入报告查看本场最大问题和数据证据。",
+    strength: "已经完成一场可复盘的数据记录。",
+    first_action: data.recent_plan?.topic ? `按“${data.recent_plan.topic}”准备下一场直播。` : "根据报告创建下一场开播方案。"
+  } : null);
 
   return (
     <>
@@ -217,27 +231,27 @@ export default function HomePage() {
       {data && data.streamer_count > 0 && data.session_count > 0 ? <div className="mt-6 grid gap-5 lg:grid-cols-[1.5fr_1fr]">
         <Card>
           <h2 className="mb-4 text-lg font-bold">最近一场直播</h2>
-          {!loading && !error && !data?.latest_session ? <StatusMessage type="empty" text="还没有直播记录。先上传一场复盘，AI 会告诉你下一场怎么改。" /> : null}
-          {data?.latest_session ? (
+          {!loading && !error && !latestSession ? <StatusMessage type="empty" text="还没有直播记录。先上传一场复盘，AI 会告诉你下一场怎么改。" /> : null}
+          {latestSession ? (
             <div className="space-y-4">
-              <div className="text-sm text-slate-500">{new Date(data.latest_session.created_at).toLocaleString("zh-CN")}</div>
+              <div className="text-sm text-slate-500">{latestSession.created_at ? new Date(latestSession.created_at).toLocaleString("zh-CN") : "最近记录"}</div>
               <div className="rounded-2xl border border-brand/20 bg-white/[0.045] p-4">
                 <div className="text-xs font-semibold text-brand">一句话结论</div>
-                <div className="mt-2 text-xl font-bold leading-8">{data.latest_session.summary}</div>
+                <div className="mt-2 text-xl font-bold leading-8">{latestSession.summary}</div>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-2xl border border-coral/20 bg-coral/10 p-4 text-sm">
                 <div className="text-xs font-semibold text-coral">最大问题</div>
-                  <div className="mt-2 font-bold text-slate-50">{data.latest_session.main_problem}</div>
+                  <div className="mt-2 font-bold text-slate-50">{latestSession.main_problem}</div>
                 </div>
                 <div className="rounded-2xl border border-brand/20 bg-brand/10 p-4 text-sm">
                   <div className="text-xs font-semibold text-brand">最大优势</div>
-                  <div className="mt-2 font-bold text-slate-50">{data.latest_session.strength}</div>
+                  <div className="mt-2 font-bold text-slate-50">{latestSession.strength}</div>
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-sm">
                 <div className="text-xs font-semibold text-slate-400">下一场首要任务</div>
-                <div className="mt-2 font-bold text-slate-50">{data.latest_session.first_action}</div>
+                <div className="mt-2 font-bold text-slate-50">{latestSession.first_action}</div>
               </div>
               {data.metric_changes?.length ? (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -259,7 +273,7 @@ export default function HomePage() {
               ) : (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-400">最近指标变化：至少完成两场同范围复盘后显示。</div>
               )}
-              <Link className="brand-gradient inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-bold text-[#061016]" href={`/report/${data.latest_session.id}`}>
+              <Link className="brand-gradient inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-bold text-[#061016]" href={`/report/${latestSession.id}`}>
                 查看报告
                 <ArrowUpRight size={16} />
               </Link>
@@ -271,9 +285,9 @@ export default function HomePage() {
           {data.task_execution_summary?.summary ? (
             <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-300">{data.task_execution_summary.summary}</div>
           ) : null}
-          {!data?.tasks?.length ? <StatusMessage type="empty" text="生成第一份复盘后，这里会出现最多三个本周任务。" /> : null}
+          {!tasks.length ? <StatusMessage type="empty" text="生成第一份复盘后，这里会出现最多三个本周任务。" /> : null}
           <div className="space-y-3">
-            {data?.tasks.map((task, index) => (
+            {tasks.map((task, index) => (
               <div key={task.id} className="grid grid-cols-[34px_1fr] gap-3 rounded-2xl border border-white/10 bg-white/[0.045] p-3">
                 <div className="brand-gradient flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-[#061016]">{index + 1}</div>
                 <div>
