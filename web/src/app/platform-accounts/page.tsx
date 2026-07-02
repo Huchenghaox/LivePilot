@@ -332,7 +332,7 @@ export default function PlatformAccountsPage() {
             <PrimaryButton disabled={!displayName || working} onClick={saveManualAccount}>{working ? "正在保存..." : "保存账号"}</PrimaryButton>
           </div>
           <div className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            当前账号记录可用，官方授权待配置。没有官方直播数据权限时，仍可继续使用截图复盘和手动录入。
+            当前账号记录可用，官方授权待配置。没有官方直播数据权限时，仍可继续进行直播复盘和手动录入。
           </div>
           <SecondaryButton className="mt-3" onClick={connectDouyin}>连接抖音账号</SecondaryButton>
         </Card>
@@ -456,7 +456,7 @@ export default function PlatformAccountsPage() {
               </div>
               <div className="mt-5 border-t border-slate-200 pt-4">
                 <h3 className="mb-2 text-sm font-bold">数据快照</h3>
-                {!(selectedAccount.data_snapshots || []).length ? <StatusMessage type="empty" text="暂无官方数据快照。截图复盘和手动录入不受影响。" /> : null}
+                {!(selectedAccount.data_snapshots || []).length ? <StatusMessage type="empty" text="暂无官方数据快照。直播复盘和手动录入不受影响。" /> : null}
                 <div className="space-y-2">
                   {(selectedAccount.data_snapshots || []).map((item) => (
                     <div key={item.id} className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">

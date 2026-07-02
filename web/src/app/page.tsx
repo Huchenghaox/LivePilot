@@ -113,7 +113,7 @@ export default function HomePage() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <PageTitle title="AI直播增长系统" desc="把每一场直播变成一次可验证的增长实验：准备、复盘、诊断、下一场执行。" />
         <div className="rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
-          LivePilot MVP
+          AI直播增长系统
         </div>
       </div>
       {loading ? <StatusMessage type="loading" text="正在读取首页..." /> : null}

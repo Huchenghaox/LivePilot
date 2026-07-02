@@ -18,7 +18,7 @@ export default function AssistantPage() {
 
   return (
     <>
-      <PageTitle title="实时助手" desc="Beta 使用网页提词和快捷救场，平台操作全部由主播或场控手动完成。" />
+      <PageTitle title="实时助手" desc="用于直播中的提词、节奏提醒和快捷救场；平台操作仍由主播或场控手动完成。" />
       <div className="mb-5">
         <StatusMessage type="empty" text="实时助手属于后续阶段能力。当前可预览网页提词和快捷救场样式，但不会监听系统音频，也不会自动操作平台账号。" />
       </div>

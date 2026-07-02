@@ -36,12 +36,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-soft">
       <aside className="app-shell-nav fixed left-0 top-0 hidden h-full w-56 border-r border-black/10 bg-white/85 px-3 py-4 backdrop-blur-xl lg:block">
         <div className="mb-6 flex items-center gap-2.5 px-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-[#202123] text-white shadow-sm">
+          <div className="brand-gradient flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 text-[#25211f] shadow-sm">
             <Bot size={19} />
           </div>
           <div>
             <div className="font-semibold tracking-tight text-ink">LivePilot</div>
-            <div className="text-xs text-slate-500">独立工具 · Beta</div>
+            <div className="text-xs text-slate-500">AI直播增长系统</div>
           </div>
         </div>
         <nav className="space-y-1">
@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold ${
-                  active ? "bg-[#202123] text-white shadow-sm" : "text-slate-500 hover:bg-black/[0.04] hover:text-ink"
+                  active ? "brand-gradient text-[#25211f] shadow-sm" : "text-slate-500 hover:bg-black/[0.04] hover:text-ink"
                 }`}
               >
                 <Icon size={17} />
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="mt-5 rounded-xl border border-black/10 bg-slate-50 p-3 text-xs leading-5 text-slate-500">
-          LivePilot 是独立直播运营工具，与抖音官方无隶属或授权关系。
+          准备、复盘、诊断和下一场动作放在同一条增长链路里。
         </div>
         <button
           className="focus-ring mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-black/[0.04] hover:text-ink"
@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           return (
-            <Link key={item.href} href={item.href} className={`rounded-xl py-2 text-center text-xs font-semibold ${active ? "bg-[#202123] text-white" : "text-slate-500"}`}>
+            <Link key={item.href} href={item.href} className={`rounded-xl py-2 text-center text-xs font-semibold ${active ? "brand-gradient text-[#25211f]" : "text-slate-500"}`}>
               <Icon className="mx-auto mb-1" size={18} />
               {item.label}
             </Link>

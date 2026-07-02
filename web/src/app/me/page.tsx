@@ -97,7 +97,7 @@ export default function MePage() {
   }
 
   async function requestDeletion() {
-    if (!window.confirm("确定提交注销申请？Beta 阶段会先记录申请，由管理员处理。")) return;
+    if (!window.confirm("确定提交注销申请？系统会记录申请，由管理员处理。")) return;
     const result = await apiFetch<{ message: string }>("/api/account/deletion-request", {
       method: "POST",
       body: JSON.stringify({ reason: deletionReason })
@@ -132,7 +132,7 @@ export default function MePage() {
         <Link href="/model-settings">
           <Card>
             <h2 className="text-lg font-bold">模型设置</h2>
-            <p className="mt-2 text-sm text-slate-500">配置文字分析模型、图片识别模型和 Mock 演示。</p>
+            <p className="mt-2 text-sm text-slate-500">查看文字分析和图片识别能力是否可用。</p>
           </Card>
         </Link>
         <Link href="/rules">
@@ -142,14 +142,14 @@ export default function MePage() {
           </Card>
         </Link>
         <Card>
-          <h2 className="text-lg font-bold">Beta版本说明</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">当前版本聚焦抖音后台截图复盘。音视频、实时助手、自动场控和高光剪辑为后续开放能力。</p>
+          <h2 className="text-lg font-bold">产品说明</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">LivePilot 目前重点支持开播准备、直播数据复盘、增长诊断和下一场行动建议。</p>
         </Card>
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 text-lg font-bold">Beta反馈</h2>
+          <h2 className="mb-3 text-lg font-bold">问题反馈</h2>
           <div className="grid gap-3">
             <select className="rounded-md border border-slate-300 px-3 py-2 text-sm" value={feedbackType} onChange={(event) => setFeedbackType(event.target.value)}>
               {["报告有帮助", "数据判断不准确", "建议太空泛", "建议不适合我的直播", "规则依据有问题", "操作遇到问题", "其他"].map((item) => <option key={item}>{item}</option>)}
@@ -209,7 +209,7 @@ export default function MePage() {
 
         <Card>
           <h2 className="mb-3 text-lg font-bold">数据与隐私</h2>
-          <p className="mb-3 text-sm leading-6 text-slate-500">截图和复盘数据只用于当前账号的分析。Beta 阶段注销账号先记录申请，由管理员处理。</p>
+          <p className="mb-3 text-sm leading-6 text-slate-500">截图和复盘数据只用于当前账号的分析。注销账号会先记录申请，由管理员处理。</p>
           <div className="mb-3 flex flex-wrap gap-2 text-sm">
             <Link className="font-semibold text-brand" href="/terms">查看服务条款</Link>
             <Link className="font-semibold text-brand" href="/privacy">查看隐私说明</Link>

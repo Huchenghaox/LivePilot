@@ -3,28 +3,28 @@
 @tailwind utilities;
 
 :root {
-  color: #202123;
-  background: #f7f7f4;
+  color: #25211f;
+  background: #fbfaf7;
   color-scheme: light;
-  --bg: #f7f7f4;
-  --bg-soft: #f1f1ee;
+  --bg: #fbfaf7;
+  --bg-soft: #f7f1ec;
   --panel: #ffffff;
-  --panel-2: #fbfbf8;
-  --panel-3: #f3f3ef;
-  --line: rgba(32, 33, 35, 0.1);
-  --line-strong: rgba(32, 33, 35, 0.18);
-  --text: #202123;
-  --text-strong: #0f0f0f;
-  --muted: #6b6f76;
-  --muted-2: #9a9da3;
-  --brand: #10a37f;
-  --brand-2: #0e8f70;
-  --coral: #d74f4f;
+  --panel-2: #fffaf7;
+  --panel-3: #f7eee8;
+  --line: rgba(55, 45, 40, 0.1);
+  --line-strong: rgba(55, 45, 40, 0.18);
+  --text: #25211f;
+  --text-strong: #151312;
+  --muted: #746d68;
+  --muted-2: #aaa19a;
+  --brand: #18a98f;
+  --brand-2: #f472b6;
+  --coral: #ee6f8f;
   --warning: #b7791f;
   --success: #168a63;
   --danger: #c2413f;
-  --radius-card: 14px;
-  --radius-control: 9px;
+  --radius-card: 16px;
+  --radius-control: 10px;
 }
 
 * {
@@ -37,8 +37,10 @@ body {
   font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 12% 0%, rgba(16, 163, 127, 0.045), transparent 24rem),
-    linear-gradient(180deg, #fbfbf8 0%, #f7f7f4 48%, #f4f4f1 100%);
+    radial-gradient(circle at 10% 4%, rgba(255, 202, 214, 0.38), transparent 24rem),
+    radial-gradient(circle at 82% 0%, rgba(184, 255, 239, 0.32), transparent 22rem),
+    radial-gradient(circle at 78% 72%, rgba(255, 224, 166, 0.24), transparent 24rem),
+    linear-gradient(180deg, #fffdf9 0%, #fbfaf7 46%, #f7f1ec 100%);
 }
 
 button,
@@ -74,8 +76,8 @@ textarea::placeholder {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: rgba(16, 163, 127, 0.62);
-  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.12);
+  border-color: rgba(24, 169, 143, 0.58);
+  box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.12);
   outline: none;
 }
 
@@ -93,18 +95,18 @@ select option {
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 250, 247, 0.88));
   border: 1px solid var(--line);
-  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.035), 0 8px 24px rgba(15, 15, 15, 0.035);
+  box-shadow: 0 1px 2px rgba(44, 34, 30, 0.035), 0 10px 28px rgba(72, 48, 42, 0.045);
   backdrop-filter: blur(12px);
 }
 
 .brand-gradient {
-  background: var(--text-strong);
+  background: linear-gradient(135deg, #b9fff0 0%, #ffd1e1 52%, #ffe0a8 100%);
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, var(--text-strong), var(--brand));
+  background: linear-gradient(135deg, var(--text-strong), #d9468f 45%, var(--brand));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -188,7 +190,7 @@ select option {
 .bg-brand\/10,
 .bg-brand\/15,
 .bg-brand\/20 {
-  background-color: rgba(16, 163, 127, 0.08) !important;
+  background-color: rgba(24, 169, 143, 0.09) !important;
 }
 
 .border-brand\/20,
@@ -197,7 +199,7 @@ select option {
 .border-brand\/35,
 .border-brand\/40,
 .border-brand\/60 {
-  border-color: rgba(16, 163, 127, 0.22) !important;
+  border-color: rgba(24, 169, 143, 0.24) !important;
 }
 
 .text-ink,
@@ -229,7 +231,7 @@ select option {
 }
 
 .text-\[\#061016\] {
-  color: #ffffff !important;
+  color: #25211f !important;
 }
 
 .text-red-700,
@@ -243,7 +245,7 @@ select option {
 }
 
 .border-brand {
-  border-color: rgba(16, 163, 127, 0.62) !important;
+  border-color: rgba(24, 169, 143, 0.58) !important;
 }
 
 .bg-brand {
@@ -251,7 +253,7 @@ select option {
 }
 
 .bg-coral {
-  background: linear-gradient(135deg, var(--coral), #f04470) !important;
+  background: linear-gradient(135deg, var(--coral), #f472b6) !important;
 }
 
 .rounded-2xl {
@@ -264,7 +266,7 @@ select option {
 
 .shadow-card,
 .shadow-glow {
-  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.035), 0 8px 24px rgba(15, 15, 15, 0.035) !important;
+  box-shadow: 0 1px 2px rgba(44, 34, 30, 0.035), 0 10px 28px rgba(72, 48, 42, 0.045) !important;
 }
 
 details,
@@ -294,7 +296,7 @@ a.border-slate-200 {
 
 .shadow-glow,
 .shadow-card {
-  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.04), 0 16px 40px rgba(15, 15, 15, 0.04) !important;
+  box-shadow: 0 1px 2px rgba(44, 34, 30, 0.035), 0 10px 28px rgba(72, 48, 42, 0.045) !important;
 }
 
 textarea.bg-black\/20,
@@ -307,7 +309,7 @@ button.border-slate-300:hover,
 a.border-slate-300:hover,
 button.border-slate-200:hover,
 a.border-slate-200:hover {
-  border-color: rgba(16, 163, 127, 0.36) !important;
+  border-color: rgba(244, 114, 182, 0.32) !important;
   background-color: rgba(255, 255, 255, 0.94);
 }
 

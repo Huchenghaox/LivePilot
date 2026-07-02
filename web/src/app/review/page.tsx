@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiFetch, uploadWithProgress } from "@/lib/api";
 import { Card, PageTitle, PrimaryButton, StatusMessage } from "@/components/ui";
 
@@ -56,6 +57,7 @@ const statusText: Record<string, string> = {
 };
 
 export default function ReviewPage() {
+  const router = useRouter();
   const [streamers, setStreamers] = useState<Streamer[]>([]);
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [streamerId, setStreamerId] = useState("");
@@ -69,7 +71,7 @@ export default function ReviewPage() {
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [historyAccounts, setHistoryAccounts] = useState<PlatformAccount[]>([]);
-  const [title, setTitle] = useState("我的直播复盘");
+  const [title, setTitle] = useState("AI直播复盘");
   const [liveDate, setLiveDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [sessionTopic, setSessionTopic] = useState("");
   const [mainGoal, setMainGoal] = useState("留得更久");
@@ -167,6 +169,7 @@ export default function ReviewPage() {
       setCreatedId(session.id);
       setCreatedWithScreenshots(uploadScreenshots);
       await load();
+      router.push(`/review/${session.id}/confirm`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "上传失败");
     } finally {
@@ -348,7 +351,7 @@ export default function ReviewPage() {
 
   return (
     <>
-      <PageTitle title="直播复盘" desc="上传抖音后台截图，AI 先识别关键数据，再生成下一场行动。" />
+      <PageTitle title="直播复盘" desc="先把抖音后台截图交给 AI。系统会自动提取数据，缺什么再请你补什么。" />
       <div className="mb-5 rounded-2xl border border-white/10 bg-panel/70 p-4 shadow-card backdrop-blur">
         <div className="hidden items-center gap-3 md:flex">
           {reviewSteps.map((step, index) => (
@@ -363,7 +366,7 @@ export default function ReviewPage() {
         </div>
         <div className="md:hidden">
           <div className="text-xs text-brand">第 1 步，共 5 步</div>
-          <div className="mt-1 text-sm font-semibold text-slate-100">基础信息与数据来源</div>
+          <div className="mt-1 text-sm font-semibold text-slate-100">上传截图，让 AI 先读</div>
         </div>
       </div>
       {loading ? <StatusMessage type="loading" text="正在准备复盘流程..." /> : null}
@@ -374,28 +377,34 @@ export default function ReviewPage() {
           <Link className="brand-gradient mt-4 inline-flex rounded-xl px-4 py-2 text-sm font-semibold text-ink shadow-glow" href="/streamers">去创建主播</Link>
         </Card>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+        <div className="space-y-5">
           <Card className="relative overflow-hidden">
             <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-brand/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 -left-16 h-44 w-44 rounded-full bg-coral/10 blur-3xl" />
             <div className="relative">
             <div className="mb-5">
-              <div className="text-xs font-semibold text-brand">新一场直播数据</div>
-              <h2 className="mt-1 text-xl font-bold text-slate-50">新建复盘</h2>
-              <p className="mt-2 text-sm text-slate-400">先保存基础信息，再上传截图或直接手动填写关键数据。</p>
+              <div className="text-xs font-semibold text-brand">智能复盘</div>
+              <h2 className="mt-1 text-xl font-bold text-slate-50">先上传截图，AI 自动理解</h2>
+              <p className="mt-2 text-sm text-slate-400">不用先填一堆资料。选择主播后直接上传、拖拽或粘贴截图；识别不到的字段，下一步再补。</p>
             </div>
-            <label className="mb-2 block text-sm font-medium">选择主播</label>
-            <select className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2" value={streamerId} onChange={(event) => {
-              setStreamerId(event.target.value);
-              window.localStorage.setItem("current_streamer_id", event.target.value);
-            }}>
-              {streamers.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.direction}</option>)}
-            </select>
-            <label className="mb-2 block text-sm font-medium">直播名称</label>
-            <input className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2" value={title} onChange={(event) => setTitle(event.target.value)} />
+            <div className="mb-4 grid gap-3 md:grid-cols-2">
+              <label className="text-sm font-medium">
+                <span className="mb-2 block">主播</span>
+                <select className="w-full rounded-md border border-slate-300 px-3 py-2" value={streamerId} onChange={(event) => {
+                  setStreamerId(event.target.value);
+                  window.localStorage.setItem("current_streamer_id", event.target.value);
+                }}>
+                  {streamers.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.direction}</option>)}
+                </select>
+              </label>
+              <div className="rounded-xl border border-brand/20 bg-brand/5 p-3 text-sm text-slate-400">
+                <div className="font-semibold text-slate-100">AI 会先读取截图</div>
+                <div className="mt-1 text-xs leading-5">标题、开播时间、时长、流量、互动、营收等数据会优先从截图里提取。</div>
+              </div>
+            </div>
             {platformAccounts.length > 1 ? (
               <>
-                <label className="mb-2 block text-sm font-medium">选择抖音账号</label>
+                <label className="mb-2 block text-sm font-medium">抖音账号，可选</label>
                 <select className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2" value={platformAccountId} onChange={(event) => setPlatformAccountId(event.target.value)}>
                   {platformAccounts.map((account) => (
                     <option key={account.id} value={account.id}>
@@ -413,78 +422,10 @@ export default function ReviewPage() {
                 这个主播还没有绑定抖音账号。本次复盘仍可继续，之后可在“我的-平台账号”补充。
               </div>
             )}
-            {preparePlans.length ? (
-              <>
-                <label className="mb-2 block text-sm font-medium">关联开播方案，可选</label>
-                <select className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2" value={preparationPlanId} onChange={(event) => setPreparationPlanId(event.target.value)}>
-                  <option value="">不关联开播方案</option>
-                  {preparePlans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.topic} · {plan.goal} · {plan.duration_minutes}分钟{plan.is_used ? " · 已使用" : ""}
-                    </option>
-                  ))}
-                </select>
-              </>
-            ) : (
-              <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-400">还没有可关联的开播方案，可先直接复盘。</div>
-            )}
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="text-sm font-medium">
-                <span className="mb-2 block">直播日期</span>
-                <input className="w-full rounded-md border border-slate-300 px-3 py-2" type="date" value={liveDate} onChange={(event) => setLiveDate(event.target.value)} />
-              </label>
-              <label className="text-sm font-medium">
-                <span className="mb-2 block">本场目标</span>
-                <select className="w-full rounded-md border border-slate-300 px-3 py-2" value={mainGoal} onChange={(event) => setMainGoal(event.target.value)}>
-                  {["更多人进入", "留得更久", "更多互动", "更多关注", "更多成交", "降低违规风险"].map((item) => <option key={item}>{item}</option>)}
-                </select>
-              </label>
-            </div>
-            <label className="mb-2 mt-4 block text-sm font-medium">直播主题</label>
-            <input className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="例如 新手开播留人" value={sessionTopic} onChange={(event) => setSessionTopic(event.target.value)} />
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="text-sm font-medium">
-                <span className="mb-2 block">是否投流</span>
-                <select className="w-full rounded-md border border-slate-300 px-3 py-2" value={hasPaidPromotion} onChange={(event) => setHasPaidPromotion(event.target.value)}>
-                  <option value="unknown">不确定</option>
-                  <option value="true">是</option>
-                  <option value="false">否</option>
-                </select>
-              </label>
-              <label className="text-sm font-medium">
-                <span className="mb-2 block">是否连麦</span>
-                <select className="w-full rounded-md border border-slate-300 px-3 py-2" value={hasCohost} onChange={(event) => setHasCohost(event.target.value)}>
-                  <option value="unknown">不确定</option>
-                  <option value="true">是</option>
-                  <option value="false">否</option>
-                </select>
-              </label>
-            </div>
-            <label className="mb-2 mt-4 block text-sm font-medium">主播补充说明</label>
-            <textarea className="mb-4 min-h-20 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="例如 开场有点慢，中途网络卡了一次" value={selfReview} onChange={(event) => setSelfReview(event.target.value)} />
-            {previousTaskResult?.session && previousTaskResult.items.length ? (
-              <div className="mb-4 rounded-2xl border border-warning/30 bg-warning/10 p-3">
-                <div className="text-sm font-semibold text-warning">上一场有 {previousTaskResult.items.length} 项行动计划，请先简单确认执行情况。</div>
-                <div className="mt-1 text-xs text-warning/80">{previousTaskResult.session.title} · 可以跳过，系统会保留未填写状态。</div>
-                <div className="mt-3 space-y-2">
-                  {previousTaskResult.items.map((task) => (
-                    <div key={task.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
-                      <div className="font-medium text-slate-100">{task.action}</div>
-                      <div className="mt-2 grid gap-2 md:grid-cols-[160px_1fr]">
-                        <select className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" value={task.status} onChange={(event) => updatePreviousTask(task, { status: event.target.value })}>
-                          {["未完成", "已执行", "部分执行", "未执行", "不适用"].map((item) => <option key={item}>{item}</option>)}
-                        </select>
-                        <input className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" placeholder="一句备注，可不填" value={task.remark || ""} onChange={(event) => updatePreviousTask(task, { remark: event.target.value })} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
             <div className="mb-3 flex items-end justify-between gap-3">
               <div>
                 <label className="block text-sm font-medium">抖音后台截图</label>
-                <p className="mt-1 text-xs text-slate-500">支持多张截图，当前无图片模型时仍可继续手动填写。</p>
+                <p className="mt-1 text-xs text-slate-500">支持多张截图。识别不完整时，下一步只补缺失数据。</p>
               </div>
               <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">可截图，也可手动录入</span>
             </div>
@@ -518,7 +459,7 @@ export default function ReviewPage() {
             </label>
             {uploadHint ? <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-slate-300">{uploadHint}</div> : null}
             <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
-              正式使用时不会把模拟识别伪装成真实数据；如果没有可用图片模型，下一步会让你确认或手动补充关键指标。
+              AI 会先读取截图里的直播数据；读不到或不确定的内容，会在下一步请你确认或补充。
             </div>
             {screenshots.length ? (
               <div className="mb-4 space-y-3">
@@ -549,6 +490,82 @@ export default function ReviewPage() {
                 ))}
               </div>
             ) : null}
+            <details className="mb-4 rounded-xl border border-black/10 bg-white/70 p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-700">可选补充：如果截图里没有这些信息，再展开填写</summary>
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="text-sm font-medium">
+                    <span className="mb-2 block">复盘名称</span>
+                    <input className="w-full rounded-md border border-slate-300 px-3 py-2" value={title} onChange={(event) => setTitle(event.target.value)} />
+                  </label>
+                  <label className="text-sm font-medium">
+                    <span className="mb-2 block">直播日期</span>
+                    <input className="w-full rounded-md border border-slate-300 px-3 py-2" type="date" value={liveDate} onChange={(event) => setLiveDate(event.target.value)} />
+                  </label>
+                  <label className="text-sm font-medium">
+                    <span className="mb-2 block">本场目标</span>
+                    <select className="w-full rounded-md border border-slate-300 px-3 py-2" value={mainGoal} onChange={(event) => setMainGoal(event.target.value)}>
+                      {["更多人进入", "留得更久", "更多互动", "更多关注", "更多成交", "降低违规风险"].map((item) => <option key={item}>{item}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm font-medium">
+                    <span className="mb-2 block">直播主题</span>
+                    <input className="w-full rounded-md border border-slate-300 px-3 py-2" placeholder="例如 新手开播留人" value={sessionTopic} onChange={(event) => setSessionTopic(event.target.value)} />
+                  </label>
+                  <label className="text-sm font-medium">
+                    <span className="mb-2 block">是否投流</span>
+                    <select className="w-full rounded-md border border-slate-300 px-3 py-2" value={hasPaidPromotion} onChange={(event) => setHasPaidPromotion(event.target.value)}>
+                      <option value="unknown">不确定</option>
+                      <option value="true">是</option>
+                      <option value="false">否</option>
+                    </select>
+                  </label>
+                  <label className="text-sm font-medium">
+                    <span className="mb-2 block">是否连麦</span>
+                    <select className="w-full rounded-md border border-slate-300 px-3 py-2" value={hasCohost} onChange={(event) => setHasCohost(event.target.value)}>
+                      <option value="unknown">不确定</option>
+                      <option value="true">是</option>
+                      <option value="false">否</option>
+                    </select>
+                  </label>
+                </div>
+                {preparePlans.length ? (
+                  <label className="block text-sm font-medium">
+                    <span className="mb-2 block">关联开播方案</span>
+                    <select className="w-full rounded-md border border-slate-300 px-3 py-2" value={preparationPlanId} onChange={(event) => setPreparationPlanId(event.target.value)}>
+                      <option value="">不关联开播方案</option>
+                      {preparePlans.map((plan) => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.topic} · {plan.goal} · {plan.duration_minutes}分钟{plan.is_used ? " · 已使用" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="block text-sm font-medium">
+                  <span className="mb-2 block">主播补充说明</span>
+                  <textarea className="min-h-20 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="例如 开场有点慢，中途网络卡了一次。可不填。" value={selfReview} onChange={(event) => setSelfReview(event.target.value)} />
+                </label>
+                {previousTaskResult?.session && previousTaskResult.items.length ? (
+                  <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
+                    <div className="text-sm font-semibold text-warning">上一场有 {previousTaskResult.items.length} 项行动计划，可顺手确认执行情况。</div>
+                    <div className="mt-3 space-y-2">
+                      {previousTaskResult.items.map((task) => (
+                        <div key={task.id} className="rounded-xl border border-black/10 bg-white/70 p-3 text-sm">
+                          <div className="font-medium text-slate-100">{task.action}</div>
+                          <div className="mt-2 grid gap-2 md:grid-cols-[160px_1fr]">
+                            <select className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" value={task.status} onChange={(event) => updatePreviousTask(task, { status: event.target.value })}>
+                              {["未完成", "已执行", "部分执行", "未执行", "不适用"].map((item) => <option key={item}>{item}</option>)}
+                            </select>
+                            <input className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" placeholder="一句备注，可不填" value={task.remark || ""} onChange={(event) => updatePreviousTask(task, { remark: event.target.value })} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </details>
             {working && uploadProgress > 0 ? (
               <div className="mb-4">
                 <div className="mb-1 flex justify-between text-xs text-slate-500"><span>上传进度</span><span>{uploadProgress}%</span></div>
@@ -556,7 +573,7 @@ export default function ReviewPage() {
               </div>
             ) : null}
             <PrimaryButton disabled={!streamerId || working} onClick={() => createSession(Boolean(screenshots.length))}>
-              {working ? "正在创建复盘..." : screenshots.length ? "上传截图并确认数据" : "直接手动填写"}
+              {working ? "AI 正在读取截图..." : screenshots.length ? "让 AI 识别截图" : "没有截图，直接手动补数据"}
             </PrimaryButton>
             {createdId ? (
               <div className="mt-4 rounded-2xl border border-success/30 bg-success/10 p-4 text-sm text-success">

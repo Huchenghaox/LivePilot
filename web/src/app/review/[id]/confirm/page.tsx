@@ -285,6 +285,8 @@ export default function ConfirmPage() {
   }, [metricFields]);
 
   const coreFields = useMemo(() => metricFields.map((field, index) => ({ field, index })).filter((item) => item.field.group === "核心数据" && !item.field.deleted), [metricFields]);
+  const filledCoreCount = useMemo(() => coreFields.filter(({ field }) => hasFieldValue(field)).length, [coreFields]);
+  const missingCoreFields = useMemo(() => coreFields.filter(({ field }) => !hasFieldValue(field)).map(({ field }) => field.label).slice(0, 6), [coreFields]);
 
   useEffect(() => {
     void load();
@@ -335,8 +337,20 @@ export default function ConfirmPage() {
           <Card>
             <div className="mb-5">
               <div className="text-xs font-semibold text-brand">正式分析前的关键一步</div>
-              <h2 className="mt-1 text-xl font-bold text-slate-50">先确认核心指标</h2>
-              <p className="mt-2 text-sm text-slate-500">不用全部填写。没看到的数据留空即可，系统会按缺失处理，不会自动当成 0。</p>
+              <h2 className="mt-1 text-xl font-bold text-slate-50">AI 已先读一遍，你只需要补缺口</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                已识别 {filledCoreCount} 项核心信息。空字段可以留空，系统会按“数据不足”处理，不会自动当成 0。
+              </p>
+              {missingCoreFields.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">建议补充</span>
+                  {missingCoreFields.map((label) => (
+                    <span key={label} className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs text-slate-500">{label}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-3 inline-flex rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">核心信息已基本完整</div>
+              )}
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {coreFields.map(({ field, index }) => (
@@ -610,10 +624,14 @@ function normalizeClientValue(value: string) {
 }
 
 function MetricInput({ field, index, error, onUpdate }: { field: MetricField; index: number; error?: string; onUpdate: (index: number, patch: Partial<MetricField>) => void }) {
+  const hasValue = hasFieldValue(field);
   if (field.metric_key === "has_paid_promotion" || field.metric_key === "has_violation") {
     return (
       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-        <label className="mb-1 block text-sm font-medium text-slate-100">{field.label}</label>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <label className="block text-sm font-medium text-slate-100">{field.label}</label>
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${hasValue ? "bg-brand/10 text-brand" : "bg-warning/10 text-warning"}`}>{hasValue ? "已识别" : "待补充"}</span>
+        </div>
         <select className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value={boolToSelect(field.final_value as boolean | null)} onChange={(event) => onUpdate(index, { final_value: selectToBool(event.target.value) })}>
           <option value="">未填写</option>
           <option value="no">否</option>
@@ -624,11 +642,18 @@ function MetricInput({ field, index, error, onUpdate }: { field: MetricField; in
   }
   return (
     <div className={`rounded-2xl border p-3 ${error ? "border-danger/30 bg-danger/10" : "border-white/10 bg-white/5"}`}>
-      <label className="mb-1 block text-sm font-medium text-slate-100">{field.label}{field.unit ? <span className="ml-1 text-xs text-slate-500">单位：{field.unit}</span> : null}</label>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <label className="block text-sm font-medium text-slate-100">{field.label}{field.unit ? <span className="ml-1 text-xs text-slate-500">单位：{field.unit}</span> : null}</label>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${hasValue ? "bg-brand/10 text-brand" : "bg-warning/10 text-warning"}`}>{hasValue ? "已识别" : "待补充"}</span>
+      </div>
       <MetricValueInput field={field} index={index} error={error} onUpdate={onUpdate} />
       <div className="mt-1 text-xs text-slate-400">{coreMetricOptions.find((item) => item[0] === field.metric_key)?.[4] ?? "可留空"}</div>
     </div>
   );
+}
+
+function hasFieldValue(field: MetricField) {
+  return field.final_value !== "" && field.final_value !== null && field.final_value !== undefined;
 }
 
 function MetricValueInput({ field, index, error, onUpdate }: { field: MetricField; index: number; error?: string; onUpdate: (index: number, patch: Partial<MetricField>) => void }) {
