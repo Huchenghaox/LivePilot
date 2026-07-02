@@ -112,7 +112,7 @@ export default function MePage() {
 
   return (
     <>
-      <PageTitle title="我的" desc="管理主播、模型、规则、反馈和账号数据。" />
+      <PageTitle title="我的" desc="管理主播资料、平台账号、AI 助手状态、反馈和账号数据。" />
       {loading ? <StatusMessage type="loading" text="正在读取账号信息..." /> : null}
       {error ? <div className="mb-4"><StatusMessage type="error" text={error} onRetry={load} /></div> : null}
       {message ? <div className="mb-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">{message}</div> : null}
@@ -131,8 +131,8 @@ export default function MePage() {
         </Link>
         <Link href="/model-settings">
           <Card>
-            <h2 className="text-lg font-bold">模型设置</h2>
-            <p className="mt-2 text-sm text-slate-500">查看文字分析和图片识别能力是否可用。</p>
+            <h2 className="text-lg font-bold">AI 助手状态</h2>
+            <p className="mt-2 text-sm text-slate-500">查看方案生成、报告分析和截图读取是否可用。</p>
           </Card>
         </Link>
         <Link href="/rules">
@@ -171,7 +171,7 @@ export default function MePage() {
                 </div>
                 {item.content ? <div className="mt-2 leading-6 text-slate-600">{item.content}</div> : <div className="mt-2 text-slate-400">未填写补充说明</div>}
                 <div className="mt-2 text-xs text-slate-500">
-                  直播：{item.live_session_id || "无"} · 报告版本：{item.report_version_id || "无"} · 模型：{item.model_name || "未关联"}
+                  直播：{item.live_session_id || "无"} · 报告版本：{item.report_version_id || "无"}
                   {item.rule_snapshot?.length ? ` · 规则依据：${item.rule_snapshot.length}条` : ""}
                 </div>
                 {isAdminFeedbackView ? (

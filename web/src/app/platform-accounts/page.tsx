@@ -332,7 +332,7 @@ export default function PlatformAccountsPage() {
             <PrimaryButton disabled={!displayName || working} onClick={saveManualAccount}>{working ? "正在保存..." : "保存账号"}</PrimaryButton>
           </div>
           <div className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            当前账号记录可用，官方授权待配置。没有官方直播数据权限时，仍可继续进行直播复盘和手动录入。
+            当前可以先手动记录账号。官方连接暂未开放，不影响上传截图、补充数据和生成复盘报告。
           </div>
           <SecondaryButton className="mt-3" onClick={connectDouyin}>连接抖音账号</SecondaryButton>
         </Card>
@@ -444,7 +444,7 @@ export default function PlatformAccountsPage() {
               </div>
               <div className="mt-5 border-t border-slate-200 pt-4">
                 <h3 className="mb-2 text-sm font-bold">同步记录</h3>
-                {!(selectedAccount.sync_jobs || []).length ? <StatusMessage type="empty" text="还没有同步记录。当前官方授权未配置时，同步会明确返回暂不支持。" /> : null}
+                {!(selectedAccount.sync_jobs || []).length ? <StatusMessage type="empty" text="还没有同步记录。当前官方连接暂未开放，账号数据需要先手动维护。" /> : null}
                 <div className="space-y-2">
                   {(selectedAccount.sync_jobs || []).map((job) => (
                     <div key={job.id} className="rounded-md border border-slate-200 p-3 text-sm">

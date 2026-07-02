@@ -46,7 +46,7 @@ type SelectedScreenshot = {
   error: string;
 };
 
-const reviewSteps = ["基础信息", "数据录入", "确认数据", "规则与方式", "AI报告"];
+const reviewSteps = ["发截图给 AI", "自动读数据", "补缺口出报告"];
 
 const statusText: Record<string, string> = {
   draft: "草稿",
@@ -351,22 +351,17 @@ export default function ReviewPage() {
 
   return (
     <>
-      <PageTitle title="直播复盘" desc="先把抖音后台截图交给 AI。系统会自动提取数据，缺什么再请你补什么。" />
+      <PageTitle title="直播复盘" desc="把抖音后台截图发给 LivePilot，AI 先读数据；只有读不到的地方，再请你补充。" />
       <div className="mb-5 rounded-2xl border border-white/10 bg-panel/70 p-4 shadow-card backdrop-blur">
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="grid gap-3 md:grid-cols-3">
           {reviewSteps.map((step, index) => (
-            <div key={step} className="flex min-w-0 flex-1 items-center gap-3">
+            <div key={step} className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${index === 0 ? "brand-gradient text-ink shadow-glow" : "border border-white/10 bg-white/5 text-slate-400"}`}>
                 {index + 1}
               </div>
-              <div className={index === 0 ? "truncate text-sm font-semibold text-slate-100" : "truncate text-sm text-slate-500"}>{step}</div>
-              {index < reviewSteps.length - 1 ? <div className="h-px flex-1 bg-white/10" /> : null}
+              <div className={index === 0 ? "truncate text-sm font-semibold text-slate-100" : "truncate text-sm text-slate-400"}>{step}</div>
             </div>
           ))}
-        </div>
-        <div className="md:hidden">
-          <div className="text-xs text-brand">第 1 步，共 5 步</div>
-          <div className="mt-1 text-sm font-semibold text-slate-100">上传截图，让 AI 先读</div>
         </div>
       </div>
       {loading ? <StatusMessage type="loading" text="正在准备复盘流程..." /> : null}
@@ -383,9 +378,9 @@ export default function ReviewPage() {
             <div className="pointer-events-none absolute -bottom-24 -left-16 h-44 w-44 rounded-full bg-coral/10 blur-3xl" />
             <div className="relative">
             <div className="mb-5">
-              <div className="text-xs font-semibold text-brand">智能复盘</div>
-              <h2 className="mt-1 text-xl font-bold text-slate-50">先上传截图，AI 自动理解</h2>
-              <p className="mt-2 text-sm text-slate-400">不用先填一堆资料。选择主播后直接上传、拖拽或粘贴截图；识别不到的字段，下一步再补。</p>
+              <div className="text-xs font-semibold text-brand">AI 先读，你只确认</div>
+              <h2 className="mt-1 text-2xl font-bold text-slate-50">把直播数据截图发给 LivePilot</h2>
+              <p className="mt-2 text-sm text-slate-400">不用先填表。上传、拖拽或粘贴截图后，AI 会先提取标题、时长、流量、互动和营收；不确定的地方再让你确认。</p>
             </div>
             <div className="mb-4 grid gap-3 md:grid-cols-2">
               <label className="text-sm font-medium">
@@ -398,8 +393,8 @@ export default function ReviewPage() {
                 </select>
               </label>
               <div className="rounded-xl border border-brand/20 bg-brand/5 p-3 text-sm text-slate-400">
-                <div className="font-semibold text-slate-100">AI 会先读取截图</div>
-                <div className="mt-1 text-xs leading-5">标题、开播时间、时长、流量、互动、营收等数据会优先从截图里提取。</div>
+                <div className="font-semibold text-slate-100">下一步会发生什么</div>
+                <div className="mt-1 text-xs leading-5">AI 先读截图并填入数据，你只需要检查不确定或缺失的地方。</div>
               </div>
             </div>
             {platformAccounts.length > 1 ? (
@@ -427,7 +422,7 @@ export default function ReviewPage() {
                 <label className="block text-sm font-medium">抖音后台截图</label>
                 <p className="mt-1 text-xs text-slate-500">支持多张截图。识别不完整时，下一步只补缺失数据。</p>
               </div>
-              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">可截图，也可手动录入</span>
+              <span className="rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">没有截图也能继续</span>
             </div>
             <label
               className={`mb-3 block cursor-pointer rounded-2xl border border-dashed px-4 py-8 text-center transition ${dragActive ? "border-brand bg-brand/15 shadow-glow" : "border-brand/35 bg-brand/5 hover:border-brand hover:bg-brand/10"}`}
@@ -450,7 +445,7 @@ export default function ReviewPage() {
               }}
             >
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-brand/30 bg-brand/10 text-xl text-brand">+</span>
-              <span className="mt-3 block text-sm font-semibold text-slate-100">选择、拖入或直接粘贴抖音后台截图</span>
+              <span className="mt-3 block text-sm font-semibold text-slate-100">点击上传，或直接把截图粘贴到这里</span>
               <span className="mt-1 block text-xs text-slate-500">PNG、JPG、WEBP，单张不超过 10MB。支持 Cmd+V / Ctrl+V 粘贴微信或系统截图。</span>
               <input className="sr-only" type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={(event) => {
                 selectScreenshots(event.target.files, "选择图片");
@@ -459,7 +454,7 @@ export default function ReviewPage() {
             </label>
             {uploadHint ? <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-xs text-slate-300">{uploadHint}</div> : null}
             <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-400">
-              AI 会先读取截图里的直播数据；读不到或不确定的内容，会在下一步请你确认或补充。
+              LivePilot 会先读取截图里的直播数据；读不到或不确定的内容，会在下一步请你确认或补充。
             </div>
             {screenshots.length ? (
               <div className="mb-4 space-y-3">
@@ -491,7 +486,7 @@ export default function ReviewPage() {
               </div>
             ) : null}
             <details className="mb-4 rounded-xl border border-black/10 bg-white/70 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-700">可选补充：如果截图里没有这些信息，再展开填写</summary>
+              <summary className="cursor-pointer text-sm font-semibold text-slate-700">截图里没有的信息，再点这里补充</summary>
               <div className="mt-4 space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="text-sm font-medium">
@@ -573,7 +568,7 @@ export default function ReviewPage() {
               </div>
             ) : null}
             <PrimaryButton disabled={!streamerId || working} onClick={() => createSession(Boolean(screenshots.length))}>
-              {working ? "AI 正在读取截图..." : screenshots.length ? "让 AI 识别截图" : "没有截图，直接手动补数据"}
+              {working ? "AI 正在读取截图..." : screenshots.length ? "交给 AI 读取" : "没有截图，直接补数据"}
             </PrimaryButton>
             {createdId ? (
               <div className="mt-4 rounded-2xl border border-success/30 bg-success/10 p-4 text-sm text-success">
@@ -583,7 +578,12 @@ export default function ReviewPage() {
             ) : null}
             </div>
           </Card>
-          <Card>
+          <details className="rounded-[var(--radius-card)] border border-white/10 bg-panel/70 p-4 shadow-card backdrop-blur">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">
+              查看历史复盘
+              <span className="ml-2 text-xs font-normal text-slate-500">已完成和未完成的复盘都在这里</span>
+            </summary>
+          <Card className="mt-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold text-brand">历史直播</div>
@@ -659,6 +659,7 @@ export default function ReviewPage() {
               ))}
             </div>
           </Card>
+          </details>
         </div>
       )}
     </>

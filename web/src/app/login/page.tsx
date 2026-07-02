@@ -408,7 +408,7 @@ export default function LoginPage() {
 
         {process.env.NODE_ENV === "development" ? (
           <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs text-slate-500">
-            后台连接：{serviceStatus === "checking" ? "检查中" : serviceStatus === "ok" ? "正常" : "暂时无法连接"} · {API_BASE}
+            服务状态：{serviceStatus === "checking" ? "检查中" : serviceStatus === "ok" ? "正常" : "暂时无法连接"}
             {debugCode ? <span className="ml-2 text-amber-300">开发验证码：{debugCode}</span> : null}
           </div>
         ) : null}

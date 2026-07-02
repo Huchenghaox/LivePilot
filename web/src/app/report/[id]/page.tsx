@@ -217,7 +217,7 @@ export default function ReportPage() {
                 <option value="both">两种都要</option>
               </select>
               <PrimaryButton disabled={working} onClick={regenerate}>{working ? "正在重新生成..." : "重新生成"}</PrimaryButton>
-              <Link className="inline-flex min-h-11 items-center rounded-[var(--radius-control)] border border-white/10 bg-white/[0.055] px-4 py-2.5 text-sm font-semibold text-slate-100" href="/model-settings">更换模型</Link>
+              <Link className="inline-flex min-h-11 items-center rounded-[var(--radius-control)] border border-white/10 bg-white/[0.055] px-4 py-2.5 text-sm font-semibold text-slate-100" href="/model-settings">查看 AI 助手状态</Link>
             </div>
             </div>
           </Card>
@@ -266,7 +266,6 @@ export default function ReportPage() {
                   <Info label="规则依据" value="本次没有匹配到已生效的相关规则，报告主要依据已确认数据、主播补充说明和系统诊断。" />
                 )}
               </div>
-              <div className="mt-4 text-xs text-slate-400">模型：{report.model_name || "未记录"} · Prompt：{report.prompt_version || "未记录"}</div>
             </details>
           </Card>
           <Card>
