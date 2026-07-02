@@ -1,17 +1,17 @@
 export function PageTitle({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="mb-8">
-      <div className="mb-3 inline-flex rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+    <div className="mb-6">
+      <div className="mb-2 inline-flex rounded-full border border-black/10 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm">
         LivePilot Beta
       </div>
-      <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">{title}</h1>
-      <p className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500">{desc}</p>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink md:text-[32px] md:leading-tight">{title}</h1>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">{desc}</p>
     </div>
   );
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`glass-panel rounded-[var(--radius-card)] p-5 ${className}`}>{children}</section>;
+  return <section className={`glass-panel rounded-[var(--radius-card)] p-4 md:p-5 ${className}`}>{children}</section>;
 }
 
 export function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -19,7 +19,7 @@ export function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElemen
     <button
       {...props}
       type={props.type || "button"}
-      className={`focus-ring min-h-11 rounded-[var(--radius-control)] bg-[#202123] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-black disabled:opacity-45 ${props.className || ""}`}
+      className={`focus-ring min-h-10 rounded-[var(--radius-control)] bg-[#202123] px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-black disabled:opacity-45 ${props.className || ""}`}
     />
   );
 }
@@ -29,7 +29,7 @@ export function SecondaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElem
     <button
       {...props}
       type={props.type || "button"}
-      className={`focus-ring min-h-11 rounded-[var(--radius-control)] border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-45 ${props.className || ""}`}
+      className={`focus-ring min-h-10 rounded-[var(--radius-control)] border border-black/10 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-45 ${props.className || ""}`}
     />
   );
 }

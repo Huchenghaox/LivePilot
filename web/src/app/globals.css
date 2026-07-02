@@ -23,8 +23,8 @@
   --warning: #b7791f;
   --success: #168a63;
   --danger: #c2413f;
-  --radius-card: 16px;
-  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-control: 9px;
 }
 
 * {
@@ -37,8 +37,8 @@ body {
   font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 12% 0%, rgba(16, 163, 127, 0.08), transparent 28rem),
-    linear-gradient(180deg, #fbfbf8 0%, #f7f7f4 38%, #f1f1ee 100%);
+    radial-gradient(circle at 12% 0%, rgba(16, 163, 127, 0.045), transparent 24rem),
+    linear-gradient(180deg, #fbfbf8 0%, #f7f7f4 48%, #f4f4f1 100%);
 }
 
 button,
@@ -93,10 +93,10 @@ select option {
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--line);
-  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.04), 0 16px 40px rgba(15, 15, 15, 0.04);
-  backdrop-filter: blur(14px);
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.035), 0 8px 24px rgba(15, 15, 15, 0.035);
+  backdrop-filter: blur(12px);
 }
 
 .brand-gradient {
@@ -121,11 +121,11 @@ select option {
 }
 
 .input-dark {
-  min-height: 44px;
+  min-height: 40px;
   border-radius: var(--radius-control);
   border: 1px solid var(--line-strong);
   background: rgba(255, 255, 255, 0.92);
-  padding: 0.625rem 0.75rem;
+  padding: 0.5rem 0.7rem;
   color: var(--text);
 }
 
@@ -252,6 +252,19 @@ select option {
 
 .bg-coral {
   background: linear-gradient(135deg, var(--coral), #f04470) !important;
+}
+
+.rounded-2xl {
+  border-radius: 14px !important;
+}
+
+.rounded-xl {
+  border-radius: 10px !important;
+}
+
+.shadow-card,
+.shadow-glow {
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.035), 0 8px 24px rgba(15, 15, 15, 0.035) !important;
 }
 
 details,

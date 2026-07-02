@@ -34,10 +34,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-soft">
-      <aside className="app-shell-nav fixed left-0 top-0 hidden h-full w-64 border-r border-black/10 bg-white/85 px-4 py-5 backdrop-blur-xl lg:block">
-        <div className="mb-7 flex items-center gap-3 px-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-black/10 bg-[#202123] text-white shadow-sm">
-            <Bot size={22} />
+      <aside className="app-shell-nav fixed left-0 top-0 hidden h-full w-56 border-r border-black/10 bg-white/85 px-3 py-4 backdrop-blur-xl lg:block">
+        <div className="mb-6 flex items-center gap-2.5 px-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-[#202123] text-white shadow-sm">
+            <Bot size={19} />
           </div>
           <div>
             <div className="font-semibold tracking-tight text-ink">LivePilot</div>
@@ -52,21 +52,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold ${
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-semibold ${
                   active ? "bg-[#202123] text-white shadow-sm" : "text-slate-500 hover:bg-black/[0.04] hover:text-ink"
                 }`}
               >
-                <Icon size={18} />
+                <Icon size={17} />
                 {item.label}
               </Link>
             );
           })}
         </nav>
-        <div className="mt-6 rounded-2xl border border-black/10 bg-slate-50 p-3 text-xs leading-5 text-slate-500">
+        <div className="mt-5 rounded-xl border border-black/10 bg-slate-50 p-3 text-xs leading-5 text-slate-500">
           LivePilot 是独立直播运营工具，与抖音官方无隶属或授权关系。
         </div>
         <button
-          className="focus-ring mt-4 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-500 hover:bg-black/[0.04] hover:text-ink"
+          className="focus-ring mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-black/[0.04] hover:text-ink"
           onClick={() => {
             clearAuth();
             router.push("/login");
@@ -75,8 +75,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           退出登录
         </button>
       </aside>
-      <main className="pb-20 lg:ml-64">
-        <div className="mx-auto max-w-6xl px-4 py-8 lg:px-10 lg:py-10">{children}</div>
+      <main className="pb-20 lg:ml-56">
+        <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8 lg:py-8">{children}</div>
       </main>
       <nav className="app-shell-nav fixed bottom-0 left-0 right-0 z-50 grid grid-cols-4 border-t border-black/10 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 backdrop-blur-xl lg:hidden">
         {visibleNav.slice(0, 5).map((item) => {
