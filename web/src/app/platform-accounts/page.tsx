@@ -84,6 +84,8 @@ export default function PlatformAccountsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [profileRecognizing, setProfileRecognizing] = useState(false);
+  const [profileImageName, setProfileImageName] = useState("");
 
   function fillEditForm(account: PlatformAccount) {
     setEditDisplayName(account.display_name);
@@ -143,6 +145,38 @@ export default function PlatformAccountsPage() {
       setError(err instanceof Error ? err.message : "保存失败");
     } finally {
       setWorking(false);
+    }
+  }
+
+  async function recognizeProfileScreenshot(file: File | null) {
+    if (!file) return;
+    setProfileRecognizing(true);
+    setError("");
+    setMessage("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const result = await apiFetch<{
+        display_name?: string;
+        account_handle?: string;
+        follower_range?: string;
+        account_type?: string;
+        notes?: string;
+      }>("/api/platform-accounts/recognize-profile", {
+        method: "POST",
+        body: form
+      });
+      if (result.display_name) setDisplayName(result.display_name);
+      if (result.account_handle) setAccountHandle(result.account_handle);
+      if (result.follower_range) setFollowerRange(result.follower_range);
+      if (result.account_type) setAccountType(accountTypes.includes(result.account_type) ? result.account_type : "个人账号");
+      if (result.notes) setNotes(result.notes);
+      setProfileImageName(file.name);
+      setMessage("已从截图读取账号信息，请确认后保存。");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "账号截图读取失败。你仍可以手动填写。");
+    } finally {
+      setProfileRecognizing(false);
     }
   }
 
@@ -314,8 +348,26 @@ export default function PlatformAccountsPage() {
 
       <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
         <Card>
-          <h2 className="mb-4 text-lg font-bold">手动记录抖音账号</h2>
+          <h2 className="mb-2 text-lg font-bold">添加抖音账号</h2>
+          <p className="mb-4 text-sm leading-6 text-slate-500">可以上传主页截图先让 AI 填一遍，再确认保存；也可以直接手动填写。</p>
           <div className="grid gap-3">
+            <label className={`block cursor-pointer rounded-2xl border border-dashed p-4 text-sm transition ${profileRecognizing ? "border-slate-300 bg-slate-50 text-slate-500" : "border-black/10 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/50"}`}>
+              <span className="block font-semibold text-slate-800">{profileRecognizing ? "正在读取主页截图..." : "上传抖音主页截图，自动填写"}</span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                支持 PNG、JPG、WebP。读取到的昵称、抖音号、粉丝区间和简介会填入下方表单。
+              </span>
+              {profileImageName ? <span className="mt-2 block text-xs text-emerald-700">已读取：{profileImageName}</span> : null}
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={profileRecognizing || working}
+                onChange={(event) => {
+                  void recognizeProfileScreenshot(event.target.files?.[0] || null);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
             <input className="rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="抖音昵称" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
             <input className="rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="抖音号，可不填" value={accountHandle} onChange={(event) => setAccountHandle(event.target.value)} />
             <select className="rounded-md border border-slate-300 px-3 py-2 text-sm" value={anchorId} onChange={(event) => setAnchorId(event.target.value)}>

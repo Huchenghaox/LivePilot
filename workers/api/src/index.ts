@@ -57,6 +57,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/platform/oauth/douyin/authorize-url") return ok({ configured: false, message: "抖音官方授权能力尚未配置，你可以先手动记录账号并继续使用截图复盘。", authorization_url: "" });
       if (request.method === "GET" && url.pathname === "/api/platform-accounts") return await listPlatformAccounts(request, env, url);
       if (request.method === "POST" && url.pathname === "/api/platform-accounts") return await createPlatformAccount(request, env);
+      if (request.method === "POST" && url.pathname === "/api/platform-accounts/recognize-profile") return await recognizePlatformAccountProfile(request, env);
       if (request.method === "GET" && /^\/api\/platform-accounts\/\d+$/.test(url.pathname)) return await getPlatformAccount(request, env, idFromPath(url.pathname, "平台账号不存在"));
       if (request.method === "PATCH" && /^\/api\/platform-accounts\/\d+$/.test(url.pathname)) return await updatePlatformAccount(request, env, idFromPath(url.pathname, "平台账号不存在"));
       if (request.method === "DELETE" && /^\/api\/platform-accounts\/\d+$/.test(url.pathname)) return await deletePlatformAccount(request, env, idFromPath(url.pathname, "平台账号不存在"));
@@ -79,7 +80,7 @@ export default {
       if (["POST", "PUT"].includes(request.method) && /^\/api\/live-sessions\/\d+\/metrics$/.test(url.pathname)) return await saveSessionMetrics(request, env, Number(url.pathname.split("/")[3]));
       if (request.method === "POST" && /^\/api\/live-sessions\/\d+\/screenshots$/.test(url.pathname)) return await uploadSessionScreenshots(request, env, Number(url.pathname.split("/")[3]));
       if (request.method === "GET" && /^\/api\/live-sessions\/\d+\/screenshots$/.test(url.pathname)) return await listSessionScreenshots(request, env, Number(url.pathname.split("/")[3]));
-      if (request.method === "POST" && /^\/api\/live-sessions\/\d+\/recognized-fields$/.test(url.pathname)) return await confirmRecognizedFields(request, env, Number(url.pathname.split("/")[3]));
+      if (["POST", "PUT"].includes(request.method) && /^\/api\/live-sessions\/\d+\/recognized-fields$/.test(url.pathname)) return await confirmRecognizedFields(request, env, Number(url.pathname.split("/")[3]));
       if (request.method === "POST" && /^\/api\/live-sessions\/\d+\/recognize$/.test(url.pathname)) return await recognizeSessionScreenshots(request, env, Number(url.pathname.split("/")[3]));
       if (request.method === "GET" && /^\/api\/live-sessions\/\d+\/report$/.test(url.pathname)) return await getSessionReport(request, env, Number(url.pathname.split("/")[3]));
       if (request.method === "POST" && /^\/api\/live-sessions\/\d+\/report$/.test(url.pathname)) return await generateSessionReport(request, env, Number(url.pathname.split("/")[3]));
@@ -408,7 +409,13 @@ async function adminSetRuleStatus(env: Env, admin: UserRow, id: number, status: 
 }
 
 async function adminSystemStatus(env: Env): Promise<Response> {
-  const active = await activeStoredModelConfig(env);
+  const runtime = await modelRuntimeConfig(env);
+  const assignments = await getRawModelAssignments(env);
+  const textProvider = assignments?.default_text_provider_id ? await getModelProvider(env, Number(assignments.default_text_provider_id)) : null;
+  const visionProvider = assignments?.default_vision_provider_id ? await getModelProvider(env, Number(assignments.default_vision_provider_id)) : null;
+  const latestProviderTest = [textProvider, visionProvider]
+    .filter(Boolean)
+    .sort((a: any, b: any) => String(b.last_tested_at || "").localeCompare(String(a.last_tested_at || "")))[0] as any;
   const recentModelFailures = await env.DB.prepare("SELECT COUNT(*) AS n FROM admin_audit_logs WHERE action LIKE 'admin.model.test%' AND result!='success' AND created_at >= datetime('now','-7 days')").first<{ n: number }>();
   return ok({
     api_worker: "ok",
@@ -416,10 +423,10 @@ async function adminSystemStatus(env: Env): Promise<Response> {
     r2: "ok",
     text_model: await modelAvailability(env, "text"),
     vision_model: await modelAvailability(env, "vision"),
-    current_text_model: active?.text_model_name || env.MODEL_TEXT_NAME || "",
-    current_vision_model: active?.vision_model_name || env.MODEL_VISION_NAME || "",
-    last_text_test: active?.last_test_status || "untested",
-    last_model_message: active?.last_test_message || "",
+    current_text_model: runtime.textModel || "",
+    current_vision_model: runtime.visionModel || "",
+    last_text_test: latestProviderTest?.last_test_status || "untested",
+    last_model_message: latestProviderTest?.last_test_message || "",
     registration_mode: registrationMode(env),
     sms_enabled: smsEnabled(env),
     model_failures_7d: recentModelFailures?.n || 0
@@ -512,6 +519,19 @@ async function createPlatformAccount(request: Request, env: Env): Promise<Respon
   if (!result) throw new HttpError(500, "平台账号创建失败，请稍后重试。");
   if (body.anchor_id) await bindAccount(env, user.id, Number(result.id), Number(body.anchor_id), true);
   return ok(await serializePlatformAccount(env, result, true));
+}
+
+async function recognizePlatformAccountProfile(request: Request, env: Env): Promise<Response> {
+  const user = await requireUser(request, env);
+  const form = await request.formData();
+  const file = form.get("file");
+  if (!file || typeof file !== "object" || !("arrayBuffer" in file)) throw new HttpError(400, "请上传一张抖音主页截图。");
+  const bytes = new Uint8Array(await (file as File).arrayBuffer());
+  const contentType = detectImageType(bytes);
+  if (!contentType) throw new HttpError(400, "图片格式不正确，请上传 PNG、JPG 或 WebP。");
+  if (!bytes.byteLength) throw new HttpError(400, "图片为空，请重新选择。");
+  if (bytes.byteLength > 10 * 1024 * 1024) throw new HttpError(413, "单张截图不能超过10MB。");
+  return ok(await recognizePlatformProfileWithModel(env, bytes, contentType, user.id));
 }
 
 async function getPlatformAccount(request: Request, env: Env, id: number): Promise<Response> {
@@ -718,6 +738,10 @@ async function getSessionMetrics(request: Request, env: Env, sessionId: number):
   const items = (rows.results || []).map(serializeMetric);
   const response = {
     ...metrics,
+    duration_minutes: session.duration_minutes ?? metrics.duration_minutes ?? null,
+    peak_online: session.peak_online ?? metrics.peak_online ?? null,
+    average_online: session.average_online ?? metrics.average_online ?? null,
+    new_followers: session.new_followers ?? metrics.new_followers ?? null,
     session,
     session_topic: session.session_topic || session.title || "",
     live_date: session.live_date || "",
@@ -1187,6 +1211,21 @@ async function recognizeScreenshotWithModel(env: Env, bytes: Uint8Array, content
       { type: "image_url", image_url: { url: dataUrl } }
     ] }
   ], config, 2500, { userId, operation: "screenshot_recognition", purpose: "vision" });
+}
+
+async function recognizePlatformProfileWithModel(env: Env, bytes: Uint8Array, contentType: string, userId?: number): Promise<any> {
+  const config = await modelCallConfig(env, "vision");
+  if (!config) throw new HttpError(400, "截图自动读取暂不可用。你仍可以手动填写账号昵称和抖音号。");
+  if (isKnownTextOnlyModel(config.model)) throw new HttpError(400, "当前图片读取能力暂不可用，请联系管理员选择支持图片的模型。");
+  const dataUrl = `data:${contentType};base64,${base64(bytes)}`;
+  const result = await callOpenAIJson(env, config.model, [
+    { role: "system", content: "你是抖音主页截图信息抽取助手。只返回JSON，不要解释，不要总结，不要猜测。" },
+    { role: "user", content: [
+      { type: "text", text: platformProfilePrompt() },
+      { type: "image_url", image_url: { url: dataUrl } }
+    ] }
+  ], config, 900, { userId, operation: "platform_profile_recognition", purpose: "vision" });
+  return normalizePlatformProfileRecognition(result);
 }
 
 async function generatePreparePlanContent(env: Env, userId: number, streamer: any, input: any): Promise<any> {
@@ -2252,6 +2291,10 @@ function fixedDouyinDashboardFields(): Array<{ source: string; key: string; labe
     { source: "fans_group_count", key: "fan_club_joins", label: "加粉丝团人数", category: "follow", unit: "人" },
     { source: "yinlang", key: "yinlang", label: "收获音浪", category: "revenue", unit: "音浪" },
     { source: "gift_user_count", key: "gift_users", label: "送礼人数", category: "revenue", unit: "人" },
+    { source: "gift_rate", key: "gift_rate", label: "送礼率", category: "revenue", unit: "%" },
+    { source: "member_income", key: "member_income", label: "会员收入", category: "revenue", unit: "元" },
+    { source: "guardian_income", key: "guardian_income", label: "星守护收入", category: "revenue", unit: "元" },
+    { source: "estimated_income", key: "estimated_income", label: "预计本场收入", category: "revenue", unit: "元" },
     { source: "gift_income", key: "gift_income", label: "礼物收入", category: "revenue", unit: "元" },
     { source: "gmv", key: "revenue", label: "成交金额", category: "conversion", unit: "元" },
     { source: "order_count", key: "orders", label: "成交订单", category: "conversion", unit: "单" },
@@ -2440,6 +2483,10 @@ function normalizeFixedDouyinDashboard(raw: any): any[] | null {
     average_watch_seconds: ["average_watch_seconds", "人均停留", "平均观看时长", "人均停留时长"],
     peak_online: ["peak_online", "最高在线", "峰值在线"],
     new_follow_count: ["new_follow_count", "新增关注", "涨粉"],
+    gift_rate: ["gift_rate", "送礼率"],
+    member_income: ["member_income", "会员收入"],
+    guardian_income: ["guardian_income", "星守护收入"],
+    estimated_income: ["estimated_income", "预计本场收入", "预计收入"],
     gmv: ["gmv", "成交金额", "支付金额", "GMV"],
     order_count: ["order_count", "成交订单", "订单数"]
   };
@@ -2478,12 +2525,12 @@ async function applyRecognizedLiveInfo(env: Env, userId: number, sessionId: numb
   ).bind(title || null, startedAt ? String(startedAt).slice(0, 32) : null, durationMinutes, sessionId, userId).run();
   if (durationSeconds) {
     await replaceMetric(env, userId, sessionId, {
-      key: "duration_seconds",
+      key: "duration_minutes",
       label: "直播时长",
       category: "basic",
       raw_value: String(recognizedValue(liveInfo.duration_seconds) ?? recognizedValue(liveInfo.duration) ?? durationSeconds),
-      normalized_value: durationSeconds,
-      unit: "秒",
+      normalized_value: durationMinutes,
+      unit: "分钟",
       source_type: "screenshot_ai",
       confidence: "high",
       is_confirmed: 0
@@ -2678,9 +2725,10 @@ function visionPrompt(): string {
 
 function douyinDashboardPrompt(): string {
   return [
-    "请先判断图片是否为抖音直播后台数据图。",
+    "请先判断图片是否为抖音直播后台数据图。常见版式是顶部直播标题和时间，下面三块面板：营收指标、流量指标、互动指标。",
     "如果是，platform必须为douyin，screenshot_type必须为live_dashboard。",
     "如果不是，platform和screenshot_type按实际填写，metrics字段仍返回固定结构但值为null。",
+    "按面板逐项读取，不要只看显眼大数字；小字指标也必须抽取。",
     "只抽取当前场次真实数据，不要混入较近7场、上一场、同类主播对比等历史对比。",
     "不要解释，不要总结，不要Markdown，只返回以下JSON结构：",
     "{",
@@ -2704,6 +2752,10 @@ function douyinDashboardPrompt(): string {
     '    "fans_group_count": null,',
     '    "yinlang": null,',
     '    "gift_user_count": null,',
+    '    "gift_rate": null,',
+    '    "member_income": null,',
+    '    "guardian_income": null,',
+    '    "estimated_income": null,',
     '    "gift_income": null,',
     '    "gmv": null,',
     '    "order_count": null,',
@@ -2711,9 +2763,78 @@ function douyinDashboardPrompt(): string {
     '    "conversion_rate": null',
     "  }",
     "}",
-    "字段含义和别名：进房人数/进入直播间人数/直播间进入人数=enter_count；进房率/进入率=enter_rate；人均停留/平均观看时长=average_watch_seconds；最高在线/峰值在线=peak_online；新增关注/涨粉=new_follow_count；成交金额/支付金额/GMV=gmv；成交订单/订单数=order_count。",
+    "字段含义和别名：进房人数/进入直播间人数/直播间进入人数=enter_count；进房率/进入率=enter_rate；人均停留/平均观看时长=average_watch_seconds；最高在线/峰值在线=peak_online；新增关注/涨粉=new_follow_count；送礼率=gift_rate；会员收入=member_income；星守护收入=guardian_income；预计本场收入=estimated_income；成交金额/支付金额/GMV=gmv；成交订单/订单数=order_count。",
     "数值可保留原始中文单位，例如2.3万、5,143、22.1%、2.2分钟；空值必须返回null。"
   ].join("\\n");
+}
+
+function platformProfilePrompt(): string {
+  return [
+    "请从抖音主页截图中抽取账号资料，只返回JSON，不要Markdown。",
+    "只读取截图中明确出现的信息；看不清或没有出现就返回null。",
+    "字段：",
+    "{",
+    '  "platform": "douyin",',
+    '  "display_name": null,',
+    '  "account_handle": null,',
+    '  "followers_raw": null,',
+    '  "following_raw": null,',
+    '  "likes_raw": null,',
+    '  "bio": null,',
+    '  "gender": null,',
+    '  "tags": [],',
+    '  "account_type_hint": null',
+    "}",
+    "抖音号通常在“抖音号：”后面；昵称通常是头像旁最大字号名称；粉丝数、获赞、关注、互关等按原文保留，例如1.2万、4502。"
+  ].join("\\n");
+}
+
+function normalizePlatformProfileRecognition(raw: any): Record<string, unknown> {
+  const displayName = cleanShortText(raw?.display_name, 80);
+  const handleRaw = cleanShortText(raw?.account_handle, 80);
+  const accountHandle = handleRaw ? handleRaw.replace(/^抖音号[:：]?/u, "").trim() : "";
+  const followersRaw = cleanShortText(raw?.followers_raw ?? raw?.followers, 40);
+  const followingRaw = cleanShortText(raw?.following_raw ?? raw?.following, 40);
+  const likesRaw = cleanShortText(raw?.likes_raw ?? raw?.likes, 40);
+  const bio = cleanShortText(raw?.bio, 300);
+  const tags = Array.isArray(raw?.tags) ? raw.tags.map((item: unknown) => cleanShortText(item, 40)).filter(Boolean).slice(0, 8) : [];
+  const accountTypeHint = cleanShortText(raw?.account_type_hint, 40);
+  const notes = [
+    bio ? `简介：${bio}` : "",
+    followersRaw ? `粉丝：${followersRaw}` : "",
+    likesRaw ? `获赞：${likesRaw}` : "",
+    followingRaw ? `关注/互关：${followingRaw}` : "",
+    tags.length ? `标签：${tags.join("、")}` : ""
+  ].filter(Boolean).join("\\n");
+  return {
+    platform: "douyin",
+    display_name: displayName || "",
+    account_handle: accountHandle || "",
+    follower_range: followerRangeFromRaw(followersRaw),
+    account_type: accountTypeHint && /商家|企业|机构/u.test(accountTypeHint) ? accountTypeHint : "个人账号",
+    notes,
+    raw: {
+      followers_raw: followersRaw || null,
+      following_raw: followingRaw || null,
+      likes_raw: likesRaw || null,
+      bio: bio || null,
+      tags
+    }
+  };
+}
+
+function cleanShortText(value: unknown, max: number): string {
+  return String(value ?? "").replace(/[\\u0000-\\u001f]/g, "").trim().slice(0, max);
+}
+
+function followerRangeFromRaw(raw: string): string {
+  const value = normalizeMetricValue(raw);
+  if (value === null) return "";
+  if (value < 1000) return "1千以下";
+  if (value < 10000) return "1千-1万";
+  if (value < 100000) return "1万-10万";
+  if (value < 1000000) return "10万-100万";
+  return "100万以上";
 }
 
 function preparePlanSchemaHint(): string {

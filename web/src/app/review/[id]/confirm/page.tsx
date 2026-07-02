@@ -218,7 +218,7 @@ export default function ConfirmPage() {
       const activeFields = metricFields.filter((field) => !field.deleted);
       setGenerationStep("正在整理直播数据");
       await apiFetch(`/api/live-sessions/${params.id}/recognized-fields`, {
-        method: "PUT",
+        method: "POST",
         body: JSON.stringify({ fields: metricFields.map(fieldPayload) })
       });
       const payload = buildLegacyMetrics(metrics, activeFields);
