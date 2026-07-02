@@ -1894,14 +1894,11 @@ function assertSafeModelBaseUrl(value: string, env: Env): void {
 }
 
 function normalizeModelName(value: unknown): string {
-  const name = String(value || "").trim();
-  const lower = name.toLowerCase();
-  if (lower === "glm5.1" || lower === "glm-5.1") return "glm-5.1";
-  return name;
+  return String(value || "").trim();
 }
 
 function isKnownTextOnlyModel(value: string): boolean {
-  return ["glm-5.1"].includes(normalizeModelName(value).toLowerCase());
+  return ["glm-5.1", "glm5.1"].includes(normalizeModelName(value).toLowerCase());
 }
 
 function modelErrorMessage(error: unknown): string {
