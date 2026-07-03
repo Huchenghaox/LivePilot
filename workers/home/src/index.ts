@@ -11,40 +11,41 @@ const html = String.raw`<!doctype html>
     <style>
       :root {
         color-scheme: dark;
-        --bg: #060811;
-        --panel: rgba(255, 255, 255, 0.07);
-        --panel-strong: rgba(255, 255, 255, 0.12);
-        --line: rgba(255, 255, 255, 0.16);
-        --text: rgba(255, 255, 255, 0.94);
-        --muted: rgba(235, 241, 255, 0.66);
-        --soft: rgba(235, 241, 255, 0.44);
-        --cyan: #28f0e7;
-        --blue: #7aa5ff;
-        --pink: #ff4f87;
-        --violet: #9d7cff;
+        --bg: #08080b;
+        --ink: #f7f3ec;
+        --muted: rgba(247, 243, 236, 0.66);
+        --faint: rgba(247, 243, 236, 0.42);
+        --line: rgba(247, 243, 236, 0.13);
+        --panel: rgba(247, 243, 236, 0.055);
+        --panel-strong: rgba(247, 243, 236, 0.095);
+        --cyan: #38e8df;
+        --rose: #ff5f8f;
+        --gold: #f2c572;
+        --violet: #9d8cff;
       }
 
       * {
         box-sizing: border-box;
       }
 
-      html,
-      body {
+      html {
         min-height: 100%;
+        background: var(--bg);
       }
 
       body {
+        min-height: 100%;
         margin: 0;
         font-family:
           Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
           "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
           sans-serif;
+        color: var(--ink);
         background:
-          radial-gradient(circle at 20% 12%, rgba(40, 240, 231, 0.24), transparent 28rem),
-          radial-gradient(circle at 82% 18%, rgba(255, 79, 135, 0.2), transparent 24rem),
-          radial-gradient(circle at 50% 85%, rgba(122, 165, 255, 0.16), transparent 30rem),
-          linear-gradient(145deg, #05070d 0%, #0a0e1a 52%, #080611 100%);
-        color: var(--text);
+          radial-gradient(circle at 16% 10%, rgba(56, 232, 223, 0.18), transparent 26rem),
+          radial-gradient(circle at 78% 8%, rgba(255, 95, 143, 0.13), transparent 25rem),
+          radial-gradient(circle at 52% 90%, rgba(242, 197, 114, 0.1), transparent 32rem),
+          linear-gradient(180deg, #0b0b10 0%, #09090d 52%, #050507 100%);
         overflow-x: hidden;
       }
 
@@ -53,24 +54,28 @@ const html = String.raw`<!doctype html>
         position: fixed;
         inset: 0;
         pointer-events: none;
-        background-image:
-          linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-        background-size: 56px 56px;
-        mask-image: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent 78%);
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+        background-size: 72px 72px;
+        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 72%);
+      }
+
+      a {
+        color: inherit;
       }
 
       .shell {
         position: relative;
-        width: min(1120px, calc(100% - 40px));
+        width: min(1160px, calc(100% - 40px));
         min-height: 100vh;
         margin: 0 auto;
-        padding: 36px 0 48px;
+        padding: 30px 0 42px;
         display: flex;
         flex-direction: column;
       }
 
-      header {
+      .topbar {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -81,454 +86,464 @@ const html = String.raw`<!doctype html>
         display: inline-flex;
         align-items: center;
         gap: 12px;
-        font-weight: 700;
-        letter-spacing: 0;
+        text-decoration: none;
       }
 
-      .mark {
-        width: 38px;
-        height: 38px;
-        border-radius: 14px;
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+        border-radius: 13px;
         display: grid;
         place-items: center;
+        color: #08080b;
+        font-size: 13px;
+        font-weight: 820;
+        letter-spacing: -0.02em;
         background:
-          linear-gradient(135deg, rgba(40,240,231,0.95), rgba(255,79,135,0.88));
-        box-shadow: 0 18px 60px rgba(40, 240, 231, 0.18);
+          linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(56, 232, 223, 0.9) 44%, rgba(255, 95, 143, 0.95));
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.7),
+          0 16px 48px rgba(56, 232, 223, 0.16);
       }
 
-      .mark svg {
-        width: 21px;
-        height: 21px;
+      .brand-copy {
+        display: grid;
+        gap: 1px;
       }
 
-      .nav-note {
+      .brand-name {
+        font-size: 15px;
+        font-weight: 720;
+        letter-spacing: -0.01em;
+      }
+
+      .brand-line {
+        color: var(--faint);
+        font-size: 12px;
+      }
+
+      .top-links {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .top-link {
+        min-height: 36px;
+        padding: 0 12px;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13px;
+        transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+      }
+
+      .top-link:hover {
+        color: var(--ink);
+        border-color: var(--line);
+        background: rgba(255, 255, 255, 0.045);
       }
 
       main {
         flex: 1;
         display: grid;
         align-content: center;
-        padding: 70px 0 56px;
+        padding: 76px 0 56px;
       }
 
       .hero {
-        display: grid;
-        grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-        gap: 44px;
-        align-items: center;
+        max-width: 980px;
+        margin: 0 auto;
+        text-align: center;
       }
 
       .eyebrow {
+        width: fit-content;
+        margin: 0 auto;
+        border: 1px solid rgba(247, 243, 236, 0.14);
+        border-radius: 999px;
+        padding: 7px 12px;
         display: inline-flex;
         align-items: center;
         gap: 9px;
-        width: fit-content;
-        border: 1px solid rgba(40, 240, 231, 0.28);
-        background: rgba(40, 240, 231, 0.08);
-        color: #9ffdf8;
-        padding: 8px 12px;
-        border-radius: 999px;
+        background: rgba(247, 243, 236, 0.055);
+        color: rgba(247, 243, 236, 0.76);
         font-size: 13px;
-        font-weight: 650;
+        font-weight: 620;
+        backdrop-filter: blur(18px);
       }
 
-      .pulse {
-        width: 8px;
-        height: 8px;
+      .signal {
+        width: 7px;
+        height: 7px;
         border-radius: 999px;
         background: var(--cyan);
-        box-shadow: 0 0 0 6px rgba(40, 240, 231, 0.14);
+        box-shadow: 0 0 0 5px rgba(56, 232, 223, 0.1);
       }
 
       h1 {
-        margin: 24px 0 0;
-        max-width: 820px;
-        font-size: clamp(48px, 8vw, 104px);
-        line-height: 0.94;
-        letter-spacing: 0;
+        margin: 28px auto 0;
+        max-width: 900px;
+        font-size: clamp(54px, 9vw, 118px);
+        line-height: 0.9;
+        font-weight: 780;
+        letter-spacing: -0.07em;
       }
 
-      .gradient-text {
-        background: linear-gradient(105deg, #fff 0%, #d9fff9 30%, #c9d7ff 56%, #ffd1df 100%);
+      .hero-gradient {
+        background: linear-gradient(110deg, #fffaf0 0%, #eafffb 34%, #e8e6ff 67%, #ffdce7 100%);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
       }
 
       .subtitle {
-        margin: 26px 0 0;
-        max-width: 650px;
+        margin: 28px auto 0;
+        max-width: 660px;
         color: var(--muted);
-        font-size: clamp(17px, 2.4vw, 22px);
-        line-height: 1.65;
+        font-size: clamp(17px, 2vw, 21px);
+        line-height: 1.68;
+        letter-spacing: 0;
       }
 
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
+      .primary-actions {
         margin-top: 34px;
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 12px;
       }
 
-      .button {
-        appearance: none;
-        border: 0;
-        text-decoration: none;
+      .pill-button {
         min-height: 48px;
         padding: 0 18px;
-        border-radius: 16px;
+        border-radius: 999px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 10px;
-        color: #05070d;
-        font-weight: 760;
-        background: linear-gradient(135deg, var(--cyan), #fff0c6 48%, var(--pink));
-        box-shadow: 0 18px 50px rgba(255, 79, 135, 0.18);
-      }
-
-      .button.secondary {
-        color: var(--text);
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid var(--line);
-        box-shadow: none;
-      }
-
-      .orbital {
-        position: relative;
-        min-height: 460px;
-        border: 1px solid rgba(255,255,255,0.14);
-        border-radius: 34px;
-        overflow: hidden;
-        background:
-          linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)),
-          rgba(255,255,255,0.04);
-        box-shadow: 0 28px 120px rgba(0, 0, 0, 0.38);
-      }
-
-      .orbital::before,
-      .orbital::after {
-        content: "";
-        position: absolute;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,0.12);
-        inset: 54px;
-        transform: rotate(-12deg);
-      }
-
-      .orbital::after {
-        inset: 112px 46px;
-        border-color: rgba(40, 240, 231, 0.18);
-        transform: rotate(24deg);
-      }
-
-      .core {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        width: 158px;
-        height: 158px;
-        border-radius: 46px;
-        display: grid;
-        place-items: center;
-        background:
-          radial-gradient(circle at 30% 20%, rgba(255,255,255,0.94), rgba(255,255,255,0.08) 42%, transparent 72%),
-          linear-gradient(135deg, rgba(40,240,231,0.92), rgba(122,165,255,0.72), rgba(255,79,135,0.82));
-        box-shadow:
-          0 0 60px rgba(40,240,231,0.22),
-          0 0 96px rgba(255,79,135,0.18);
-      }
-
-      .core span {
-        color: rgba(3, 8, 16, 0.9);
-        font-weight: 900;
-        font-size: 34px;
-      }
-
-      .node {
-        position: absolute;
-        min-width: 138px;
-        padding: 14px 15px;
-        border-radius: 20px;
-        background: rgba(9, 13, 26, 0.74);
-        border: 1px solid rgba(255,255,255,0.13);
-        backdrop-filter: blur(18px);
-      }
-
-      .node strong {
-        display: block;
+        text-decoration: none;
         font-size: 14px;
+        font-weight: 720;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.075);
+        transition: transform 170ms ease, border-color 170ms ease, background 170ms ease;
       }
 
-      .node span {
-        display: block;
-        margin-top: 5px;
-        color: var(--soft);
-        font-size: 12px;
+      .pill-button.primary {
+        color: #07080b;
+        border-color: transparent;
+        background: linear-gradient(135deg, #f9f4ea 0%, #88fff8 45%, #ff7aa1 100%);
+        box-shadow: 0 24px 70px rgba(56, 232, 223, 0.15);
       }
 
-      .node.one { left: 28px; top: 34px; }
-      .node.two { right: 26px; top: 88px; }
-      .node.three { left: 42px; bottom: 66px; }
-      .node.four { right: 34px; bottom: 34px; }
+      .pill-button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(247, 243, 236, 0.26);
+        background: rgba(255, 255, 255, 0.11);
+      }
 
-      .products {
-        margin-top: 60px;
+      .pill-button.primary:hover {
+        background: linear-gradient(135deg, #fffaf1 0%, #9ffff9 45%, #ff8aab 100%);
+      }
+
+      .product-grid {
+        margin-top: 70px;
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 18px;
+        gap: 16px;
       }
 
-      .card {
-        position: relative;
-        min-height: 184px;
+      .product-card {
+        min-height: 276px;
         padding: 24px;
-        border-radius: 26px;
         border: 1px solid var(--line);
-        background:
-          linear-gradient(145deg, rgba(255,255,255,0.11), rgba(255,255,255,0.045)),
-          rgba(255,255,255,0.04);
-        box-shadow: 0 20px 70px rgba(0, 0, 0, 0.2);
+        border-radius: 28px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
         overflow: hidden;
+        position: relative;
         text-decoration: none;
-        color: inherit;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.088), rgba(255, 255, 255, 0.035)),
+          rgba(255, 255, 255, 0.035);
+        box-shadow: 0 24px 90px rgba(0, 0, 0, 0.24);
+        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
       }
 
-      .card::after {
+      .product-card::before {
         content: "";
         position: absolute;
-        width: 220px;
-        height: 220px;
-        right: -90px;
-        top: -110px;
-        border-radius: 999px;
-        background: radial-gradient(circle, rgba(40,240,231,0.22), transparent 68%);
+        inset: -1px;
+        opacity: 0;
+        background: radial-gradient(circle at 30% 0%, var(--accent), transparent 36%);
+        transition: opacity 180ms ease;
       }
 
-      .card.disabled::after {
-        background: radial-gradient(circle, rgba(157,124,255,0.22), transparent 68%);
+      .product-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(247, 243, 236, 0.26);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
+          rgba(255, 255, 255, 0.04);
       }
 
-      .product-icon {
+      .product-card:hover::before {
+        opacity: 0.16;
+      }
+
+      .product-card > * {
+        position: relative;
+      }
+
+      .product-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .product-logo {
         width: 48px;
         height: 48px;
-        border-radius: 18px;
+        border-radius: 17px;
         display: grid;
         place-items: center;
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.12);
-      }
-
-      .product-icon svg {
-        width: 25px;
-        height: 25px;
-      }
-
-      .card h2 {
-        margin: 18px 0 0;
-        font-size: 28px;
-        line-height: 1.1;
-        letter-spacing: 0;
-      }
-
-      .card p {
-        margin: 10px 0 0;
-        color: var(--muted);
-        line-height: 1.55;
+        color: #07080b;
+        font-weight: 820;
         font-size: 15px;
-        max-width: 460px;
+        background: linear-gradient(135deg, #fffaf0, var(--accent));
+        box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
       }
 
-      .card-meta {
-        margin-top: 20px;
-        display: inline-flex;
+      .product-tag {
+        color: var(--faint);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .product-body {
+        margin-top: 42px;
+      }
+
+      .product-card h2 {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .product-card p {
+        margin: 16px 0 0;
+        max-width: 290px;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.72;
+      }
+
+      .product-foot {
+        margin-top: 28px;
+        display: flex;
         align-items: center;
-        gap: 8px;
-        color: #bffefa;
-        font-size: 13px;
-        font-weight: 720;
+        justify-content: space-between;
+        gap: 20px;
+        color: rgba(247, 243, 236, 0.84);
+        font-size: 14px;
+        font-weight: 680;
       }
 
-      .disabled .card-meta {
-        color: #d6ccff;
+      .arrow {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(247, 243, 236, 0.16);
+        background: rgba(255, 255, 255, 0.05);
+        transition: transform 180ms ease;
+      }
+
+      .product-card:hover .arrow {
+        transform: translateX(2px);
+      }
+
+      .livepilot {
+        --accent: var(--cyan);
+      }
+
+      .nultica {
+        --accent: var(--violet);
+      }
+
+      .ais {
+        --accent: var(--gold);
       }
 
       footer {
         display: flex;
         justify-content: space-between;
-        gap: 20px;
-        color: rgba(235, 241, 255, 0.46);
+        gap: 18px;
+        color: var(--faint);
         font-size: 13px;
+        border-top: 1px solid rgba(247, 243, 236, 0.09);
+        padding-top: 20px;
       }
 
       @media (max-width: 880px) {
         .shell {
           width: min(100% - 28px, 680px);
-          padding-top: 24px;
+          padding-top: 22px;
         }
 
-        header,
-        footer {
-          align-items: flex-start;
-          flex-direction: column;
-        }
-
-        main {
-          padding: 54px 0 42px;
-        }
-
-        .hero {
-          grid-template-columns: 1fr;
-          gap: 34px;
-        }
-
-        .orbital {
-          min-height: 360px;
-          order: -1;
-        }
-
-        .products {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
-      @media (max-width: 520px) {
-        .nav-note {
+        .top-links {
           display: none;
         }
 
-        .orbital {
-          min-height: 300px;
-          border-radius: 26px;
+        main {
+          align-content: start;
+          padding: 62px 0 44px;
         }
 
-        .core {
-          width: 124px;
-          height: 124px;
-          border-radius: 34px;
+        .hero {
+          text-align: left;
         }
 
-        .node {
-          min-width: auto;
-          max-width: 148px;
-          padding: 11px 12px;
+        .eyebrow,
+        .subtitle {
+          margin-left: 0;
         }
 
-        .node.two,
-        .node.four {
-          right: 12px;
+        h1 {
+          margin-left: 0;
+          font-size: clamp(54px, 16vw, 78px);
+          letter-spacing: -0.065em;
         }
 
-        .node.one,
-        .node.three {
-          left: 12px;
+        .primary-actions {
+          justify-content: flex-start;
         }
 
-        .card {
-          min-height: 166px;
-          padding: 20px;
-        }
-
-        .products {
+        .product-grid {
+          margin-top: 48px;
           grid-template-columns: 1fr;
+        }
+
+        .product-card {
+          min-height: 230px;
+        }
+
+        footer {
+          flex-direction: column;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition: none !important;
         }
       }
     </style>
   </head>
   <body>
     <div class="shell">
-      <header>
-        <div class="brand" aria-label="HaoXAgent">
-          <div class="mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M7 13.5 10.2 17 17.5 7" stroke="#061018" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+      <header class="topbar">
+        <a class="brand" href="https://haoxagent.com" aria-label="HaoXAgent home">
+          <div class="brand-mark">HX</div>
+          <div class="brand-copy">
+            <div class="brand-name">HaoXAgent</div>
+            <div class="brand-line">AI-native product lab</div>
           </div>
-          <span>HaoXAgent</span>
-        </div>
-        <div class="nav-note">AI-native systems for creators and teams</div>
+        </a>
+
+        <nav class="top-links" aria-label="Products">
+          <a class="top-link" href="https://livepilot.haoxagent.com">LivePilot</a>
+          <a class="top-link" href="https://coding.torchv.com/">Nultica</a>
+          <a class="top-link" href="https://ais.prod.torchv.com/">TorchV AIS</a>
+        </nav>
       </header>
 
       <main>
-        <section class="hero" aria-labelledby="welcome-title">
-          <div>
-            <div class="eyebrow"><span class="pulse"></span> Agent Lab Online</div>
-            <h1 id="welcome-title">
-              <span class="gradient-text">Welcome to HaoXAgent</span>
-            </h1>
-            <p class="subtitle">
-              我们正在构建面向创作者、运营团队和新一代协作方式的 AI 原生产品矩阵。
-              从直播增长，到多智能体协作，让复杂工作变得更轻、更快、更有判断力。
-            </p>
-            <div class="actions">
-              <a class="button" href="https://livepilot.haoxagent.com" rel="noopener">
-                进入 LivePilot
-                <span aria-hidden="true">→</span>
-              </a>
-              <a class="button secondary" href="https://coding.torchv.com/" rel="noopener">Nultica <span aria-hidden="true">↗</span></a>
-              <a class="button secondary" href="https://ais.prod.torchv.com/" rel="noopener">
-                TorchV AIS
-                <span aria-hidden="true">↗</span>
-              </a>
-            </div>
-          </div>
+        <section class="hero" aria-labelledby="hero-title">
+          <div class="eyebrow"><span class="signal"></span> Independent AI products for practical work</div>
+          <h1 id="hero-title"><span class="hero-gradient">Welcome to HaoXAgent</span></h1>
+          <p class="subtitle">
+            We build focused AI systems for creators, operators, and modern teams:
+            from live-stream growth to collaborative coding and enterprise intelligence.
+          </p>
 
-          <div class="orbital" aria-hidden="true">
-            <div class="core"><span>HX</span></div>
-            <div class="node one"><strong>Creator AI</strong><span>内容与增长</span></div>
-            <div class="node two"><strong>Agent OS</strong><span>任务与协作</span></div>
-            <div class="node three"><strong>Signals</strong><span>数据与洞察</span></div>
-            <div class="node four"><strong>Automation</strong><span>流程与执行</span></div>
+          <div class="primary-actions" aria-label="Primary product links">
+            <a class="pill-button primary" href="https://livepilot.haoxagent.com">Enter LivePilot <span aria-hidden="true">→</span></a>
+            <a class="pill-button" href="https://coding.torchv.com/">Open Nultica</a>
+            <a class="pill-button" href="https://ais.prod.torchv.com/">TorchV AIS</a>
           </div>
         </section>
 
-        <section class="products" aria-label="HaoXAgent products">
-          <a class="card" href="https://livepilot.haoxagent.com" rel="noopener">
-            <div class="product-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M5 11.5c0-3.1 2.5-5.6 5.6-5.6h2.8c3.1 0 5.6 2.5 5.6 5.6v1c0 3.1-2.5 5.6-5.6 5.6h-2.8C7.5 18.1 5 15.6 5 12.5v-1Z" stroke="white" stroke-width="1.8"/>
-                <path d="M9 12h.01M12 12h.01M15 12h.01" stroke="#28f0e7" stroke-width="2.6" stroke-linecap="round"/>
-                <path d="M12 5.8V3.5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
+        <section class="product-grid" aria-label="HaoXAgent product matrix">
+          <a class="product-card livepilot" href="https://livepilot.haoxagent.com" rel="noopener">
+            <div>
+              <div class="product-head">
+                <div class="product-logo">LP</div>
+                <div class="product-tag">Creator growth</div>
+              </div>
+              <div class="product-body">
+                <h2>LivePilot</h2>
+                <p>AI 直播增长助手。把直播截图、数据和复盘变成下一场可执行的开播方案。</p>
+              </div>
             </div>
-            <h2>LivePilot</h2>
-            <p>AI 直播增长助手，帮助主播完成开播准备、截图复盘、问题诊断和下一场行动方案。</p>
-            <div class="card-meta">立即进入 <span aria-hidden="true">↗</span></div>
+            <div class="product-foot">
+              <span>进入产品</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </div>
           </a>
 
-          <a class="card" href="https://coding.torchv.com/" rel="noopener">
-            <div class="product-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M4.8 7.2 12 3l7.2 4.2v8.4L12 20l-7.2-4.4V7.2Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
-                <path d="M8.2 9.2h7.6M8.2 12h7.6M8.2 14.8h4.8" stroke="#9d7cff" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
+          <a class="product-card nultica" href="https://coding.torchv.com/" rel="noopener">
+            <div>
+              <div class="product-head">
+                <div class="product-logo">N</div>
+                <div class="product-tag">Agent workspace</div>
+              </div>
+              <div class="product-body">
+                <h2>Nultica</h2>
+                <p>面向人类与智能体协作的项目空间，把想法、任务和执行过程放在一起。</p>
+              </div>
             </div>
-            <h2>Nultica</h2>
-            <p>面向人类与智能体协作的下一代项目空间，连接项目、任务与智能体执行。</p>
-            <div class="card-meta">打开 Nultica <span aria-hidden="true">↗</span></div>
+            <div class="product-foot">
+              <span>打开空间</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </div>
           </a>
 
-          <a class="card" href="https://ais.prod.torchv.com/" rel="noopener">
-            <div class="product-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M5 18.5V6.2c0-.9.7-1.6 1.6-1.6h10.8c.9 0 1.6.7 1.6 1.6v12.3" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M4 18.5h16" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-                <path d="M8 9.2h8M8 12h5M8 14.8h7" stroke="#7aa5ff" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
+          <a class="product-card ais" href="https://ais.prod.torchv.com/" rel="noopener">
+            <div>
+              <div class="product-head">
+                <div class="product-logo">AI</div>
+                <div class="product-tag">Enterprise intelligence</div>
+              </div>
+              <div class="product-body">
+                <h2>TorchV AIS</h2>
+                <p>企业知识与智能应用入口，连接业务场景、知识资产和 AI 工作流。</p>
+              </div>
             </div>
-            <h2>TorchV AIS</h2>
-            <p>面向企业知识、智能应用与业务协作的 AI 系统入口。</p>
-            <div class="card-meta">打开 AIS <span aria-hidden="true">↗</span></div>
+            <div class="product-foot">
+              <span>访问 AIS</span>
+              <span class="arrow" aria-hidden="true">→</span>
+            </div>
           </a>
         </section>
       </main>
 
       <footer>
         <span>© 2026 HaoXAgent</span>
-        <span>Independent AI products. Built for practical work.</span>
+        <span>Independent AI systems. Designed for real work.</span>
       </footer>
     </div>
   </body>
