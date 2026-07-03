@@ -308,17 +308,96 @@ const html = String.raw`<!doctype html>
         gap: 16px;
       }
 
-      .product-logo {
-        width: 48px;
-        height: 48px;
-        border-radius: 17px;
+      .logo-lockup {
+        width: 146px;
+        height: 58px;
+        padding: 9px 12px;
+        border: 1px solid rgba(247, 243, 236, 0.12);
+        border-radius: 19px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
+          rgba(255, 255, 255, 0.035);
+      }
+
+      .logo-symbol {
+        flex: 0 0 auto;
+        width: 36px;
+        height: 36px;
+        border-radius: 13px;
         display: grid;
         place-items: center;
-        color: #07080b;
-        font-weight: 820;
-        font-size: 15px;
+        overflow: hidden;
+      }
+
+      .livepilot-symbol {
+        position: relative;
+        color: #08080b;
+        font-size: 12px;
+        font-weight: 860;
+        letter-spacing: -0.03em;
         background: linear-gradient(135deg, #fffaf0, var(--accent));
         box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
+      }
+
+      .livepilot-symbol::before {
+        content: "";
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        right: -6px;
+        top: -5px;
+        border-radius: 999px;
+        background: rgba(255, 95, 143, 0.9);
+      }
+
+      .livepilot-symbol span {
+        position: relative;
+      }
+
+      .logo-word {
+        min-width: 0;
+        color: rgba(247, 243, 236, 0.92);
+        font-size: 15px;
+        font-weight: 760;
+        letter-spacing: -0.03em;
+        white-space: nowrap;
+      }
+
+      .logo-word small {
+        display: block;
+        margin-top: 1px;
+        color: var(--faint);
+        font-size: 10px;
+        font-weight: 620;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .official-symbol {
+        background: rgba(255, 255, 255, 0.94);
+      }
+
+      .official-symbol img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .official-wide {
+        width: 146px;
+        justify-content: center;
+      }
+
+      .official-wide img {
+        display: block;
+        max-width: 112px;
+        max-height: 34px;
+        object-fit: contain;
+        filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.2));
       }
 
       .product-tag {
@@ -465,9 +544,9 @@ const html = String.raw`<!doctype html>
         </a>
 
         <nav class="top-links" aria-label="Products">
-          <a class="top-link" href="https://livepilot.haoxagent.com">LivePilot</a>
-          <a class="top-link" href="https://coding.torchv.com/">Nultica</a>
           <a class="top-link" href="https://ais.prod.torchv.com/">TorchV AIS</a>
+          <a class="top-link" href="https://coding.torchv.com/">Nultica</a>
+          <a class="top-link" href="https://livepilot.haoxagent.com">LivePilot</a>
         </nav>
       </header>
 
@@ -481,26 +560,28 @@ const html = String.raw`<!doctype html>
           </p>
 
           <div class="primary-actions" aria-label="Primary product links">
-            <a class="pill-button primary" href="https://livepilot.haoxagent.com">Enter LivePilot <span aria-hidden="true">→</span></a>
+            <a class="pill-button primary" href="https://ais.prod.torchv.com/">TorchV AIS <span aria-hidden="true">→</span></a>
             <a class="pill-button" href="https://coding.torchv.com/">Open Nultica</a>
-            <a class="pill-button" href="https://ais.prod.torchv.com/">TorchV AIS</a>
+            <a class="pill-button" href="https://livepilot.haoxagent.com">Enter LivePilot</a>
           </div>
         </section>
 
         <section class="product-grid" aria-label="HaoXAgent product matrix">
-          <a class="product-card livepilot" href="https://livepilot.haoxagent.com" rel="noopener">
+          <a class="product-card ais" href="https://ais.prod.torchv.com/" rel="noopener">
             <div>
               <div class="product-head">
-                <div class="product-logo">LP</div>
-                <div class="product-tag">Creator growth</div>
+                <div class="logo-lockup official-wide" aria-label="TorchV AIS logo">
+                  <img src="https://torchv.com/img/torchv_logo_w_f.jpg" alt="TorchV" />
+                </div>
+                <div class="product-tag">Enterprise intelligence</div>
               </div>
               <div class="product-body">
-                <h2>LivePilot</h2>
-                <p>AI 直播增长助手。把直播截图、数据和复盘变成下一场可执行的开播方案。</p>
+                <h2>TorchV AIS</h2>
+                <p>企业知识与智能应用入口，连接业务场景、知识资产和 AI 工作流。</p>
               </div>
             </div>
             <div class="product-foot">
-              <span>进入产品</span>
+              <span>访问 AIS</span>
               <span class="arrow" aria-hidden="true">→</span>
             </div>
           </a>
@@ -508,7 +589,12 @@ const html = String.raw`<!doctype html>
           <a class="product-card nultica" href="https://coding.torchv.com/" rel="noopener">
             <div>
               <div class="product-head">
-                <div class="product-logo">N</div>
+                <div class="logo-lockup" aria-label="Nultica logo">
+                  <div class="logo-symbol official-symbol">
+                    <img src="https://coding.torchv.com/favicon.svg" alt="" />
+                  </div>
+                  <div class="logo-word">Nultica<small>Agent space</small></div>
+                </div>
                 <div class="product-tag">Agent workspace</div>
               </div>
               <div class="product-body">
@@ -522,19 +608,22 @@ const html = String.raw`<!doctype html>
             </div>
           </a>
 
-          <a class="product-card ais" href="https://ais.prod.torchv.com/" rel="noopener">
+          <a class="product-card livepilot" href="https://livepilot.haoxagent.com" rel="noopener">
             <div>
               <div class="product-head">
-                <div class="product-logo">AI</div>
-                <div class="product-tag">Enterprise intelligence</div>
+                <div class="logo-lockup" aria-label="LivePilot logo">
+                  <div class="logo-symbol livepilot-symbol"><span>LP</span></div>
+                  <div class="logo-word">LivePilot<small>Growth AI</small></div>
+                </div>
+                <div class="product-tag">Creator growth</div>
               </div>
               <div class="product-body">
-                <h2>TorchV AIS</h2>
-                <p>企业知识与智能应用入口，连接业务场景、知识资产和 AI 工作流。</p>
+                <h2>LivePilot</h2>
+                <p>AI 直播增长助手。把直播截图、数据和复盘变成下一场可执行的开播方案。</p>
               </div>
             </div>
             <div class="product-foot">
-              <span>访问 AIS</span>
+              <span>进入产品</span>
               <span class="arrow" aria-hidden="true">→</span>
             </div>
           </a>
