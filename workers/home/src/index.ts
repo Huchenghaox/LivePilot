@@ -330,31 +330,40 @@ const html = String.raw`<!doctype html>
         display: grid;
         place-items: center;
         overflow: hidden;
-      }
-
-      .livepilot-symbol {
         position: relative;
         color: #08080b;
         font-size: 12px;
         font-weight: 860;
         letter-spacing: -0.03em;
-        background: linear-gradient(135deg, #fffaf0, var(--accent));
+        background:
+          radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.4) 24%, transparent 46%),
+          linear-gradient(135deg, #fffaf0, var(--accent));
         box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
       }
 
-      .livepilot-symbol::before {
+      .logo-symbol::before {
         content: "";
         position: absolute;
-        width: 18px;
-        height: 18px;
-        right: -6px;
-        top: -5px;
+        width: 17px;
+        height: 17px;
+        right: -5px;
+        top: -4px;
         border-radius: 999px;
         background: rgba(255, 95, 143, 0.9);
       }
 
-      .livepilot-symbol span {
+      .logo-symbol span,
+      .logo-symbol svg {
         position: relative;
+      }
+
+      .nultica-symbol svg {
+        width: 19px;
+        height: 19px;
+      }
+
+      .ais-symbol {
+        --accent: var(--gold);
       }
 
       .logo-word {
@@ -374,30 +383,6 @@ const html = String.raw`<!doctype html>
         font-weight: 620;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-      }
-
-      .official-symbol {
-        background: rgba(255, 255, 255, 0.94);
-      }
-
-      .official-symbol img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-      }
-
-      .official-wide {
-        width: 146px;
-        justify-content: center;
-      }
-
-      .official-wide img {
-        display: block;
-        max-width: 112px;
-        max-height: 34px;
-        object-fit: contain;
-        filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.2));
       }
 
       .product-tag {
@@ -570,8 +555,9 @@ const html = String.raw`<!doctype html>
           <a class="product-card ais" href="https://ais.prod.torchv.com/" rel="noopener">
             <div>
               <div class="product-head">
-                <div class="logo-lockup official-wide" aria-label="TorchV AIS logo">
-                  <img src="https://torchv.com/img/torchv_logo_w_f.jpg" alt="TorchV" />
+                <div class="logo-lockup" aria-label="TorchV AIS logo">
+                  <div class="logo-symbol ais-symbol"><span>TV</span></div>
+                  <div class="logo-word">TorchV<small>AIS</small></div>
                 </div>
                 <div class="product-tag">Enterprise intelligence</div>
               </div>
@@ -590,8 +576,10 @@ const html = String.raw`<!doctype html>
             <div>
               <div class="product-head">
                 <div class="logo-lockup" aria-label="Nultica logo">
-                  <div class="logo-symbol official-symbol">
-                    <img src="https://coding.torchv.com/favicon.svg" alt="" />
+                  <div class="logo-symbol nultica-symbol">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                      <path d="M12 2.8v18.4M2.8 12h18.4M5.5 5.5l13 13M18.5 5.5l-13 13" stroke="#08080b" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
                   </div>
                   <div class="logo-word">Nultica<small>Agent space</small></div>
                 </div>
