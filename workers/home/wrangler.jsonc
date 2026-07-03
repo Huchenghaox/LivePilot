@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "haoxagent-home",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-25",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "haoxagent.com",
+      "custom_domain": true
+    }
+  ]
+}
