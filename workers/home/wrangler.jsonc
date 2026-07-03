@@ -8,6 +8,10 @@
     {
       "pattern": "haoxagent.com",
       "custom_domain": true
+    },
+    {
+      "pattern": "www.haoxagent.com/*",
+      "zone_name": "haoxagent.com"
     }
   ]
 }

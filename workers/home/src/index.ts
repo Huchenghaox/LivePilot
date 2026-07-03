@@ -545,7 +545,7 @@ export default {
     return new Response(html, {
       headers: {
         "content-type": "text/html; charset=utf-8",
-        "cache-control": "public, max-age=300",
+        "cache-control": "no-store",
         "x-frame-options": "DENY",
         "referrer-policy": "strict-origin-when-cross-origin",
         "x-content-type-options": "nosniff"
