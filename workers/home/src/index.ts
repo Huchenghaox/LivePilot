@@ -3,49 +3,47 @@ const html = String.raw`<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>HaoXAgent</title>
+    <title>Hao X Agent</title>
     <meta
       name="description"
-      content="HaoXAgent builds AI-native products for creators, operators, and modern teams."
+      content="Hao X Agent is a product studio building focused AI systems for creators, operators, and modern teams."
     />
     <style>
       :root {
         color-scheme: dark;
-        --bg: #08080b;
-        --ink: #f7f3ec;
-        --muted: rgba(247, 243, 236, 0.66);
-        --faint: rgba(247, 243, 236, 0.42);
-        --line: rgba(247, 243, 236, 0.13);
-        --panel: rgba(247, 243, 236, 0.055);
-        --panel-strong: rgba(247, 243, 236, 0.095);
-        --cyan: #38e8df;
-        --rose: #ff5f8f;
-        --gold: #f2c572;
-        --violet: #9d8cff;
+        --bg: #0b0a08;
+        --ink: #f6f0e6;
+        --muted: rgba(246, 240, 230, 0.68);
+        --soft: rgba(246, 240, 230, 0.46);
+        --line: rgba(246, 240, 230, 0.14);
+        --panel: rgba(246, 240, 230, 0.06);
+        --panel-strong: rgba(246, 240, 230, 0.1);
+        --cyan: #55ded6;
+        --rose: #eb6f91;
+        --gold: #d7b06c;
+        --violet: #9282d9;
       }
 
       * {
         box-sizing: border-box;
       }
 
-      html {
+      html,
+      body {
         min-height: 100%;
-        background: var(--bg);
       }
 
       body {
-        min-height: 100%;
         margin: 0;
         font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
           "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
           sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at 16% 10%, rgba(56, 232, 223, 0.18), transparent 26rem),
-          radial-gradient(circle at 78% 8%, rgba(255, 95, 143, 0.13), transparent 25rem),
-          radial-gradient(circle at 52% 90%, rgba(242, 197, 114, 0.1), transparent 32rem),
-          linear-gradient(180deg, #0b0b10 0%, #09090d 52%, #050507 100%);
+          radial-gradient(circle at 14% 8%, rgba(215, 176, 108, 0.18), transparent 28rem),
+          radial-gradient(circle at 84% 22%, rgba(85, 222, 214, 0.12), transparent 30rem),
+          linear-gradient(180deg, #11100d 0%, #0b0a08 46%, #060504 100%);
         overflow-x: hidden;
       }
 
@@ -54,11 +52,9 @@ const html = String.raw`<!doctype html>
         position: fixed;
         inset: 0;
         pointer-events: none;
-        background:
-          linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-          linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-        background-size: 72px 72px;
-        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 72%);
+        background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.26'/%3E%3C/svg%3E");
+        opacity: 0.13;
+        mix-blend-mode: soft-light;
       }
 
       a {
@@ -67,10 +63,10 @@ const html = String.raw`<!doctype html>
 
       .shell {
         position: relative;
-        width: min(1160px, calc(100% - 40px));
+        width: min(1180px, calc(100% - 40px));
         min-height: 100vh;
         margin: 0 auto;
-        padding: 30px 0 42px;
+        padding: 28px 0 42px;
         display: flex;
         flex-direction: column;
       }
@@ -85,139 +81,147 @@ const html = String.raw`<!doctype html>
       .brand {
         display: inline-flex;
         align-items: center;
-        gap: 12px;
+        gap: 13px;
         text-decoration: none;
       }
 
       .brand-mark {
-        width: 36px;
-        height: 36px;
-        border-radius: 13px;
+        width: 38px;
+        height: 38px;
+        border: 1px solid rgba(246, 240, 230, 0.2);
+        border-radius: 16px;
         display: grid;
         place-items: center;
-        color: #08080b;
+        color: #0b0a08;
         font-size: 13px;
-        font-weight: 820;
-        letter-spacing: -0.02em;
+        font-weight: 850;
+        letter-spacing: -0.04em;
         background:
-          linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(56, 232, 223, 0.9) 44%, rgba(255, 95, 143, 0.95));
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.7),
-          0 16px 48px rgba(56, 232, 223, 0.16);
-      }
-
-      .brand-copy {
-        display: grid;
-        gap: 1px;
+          radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.92), transparent 32%),
+          linear-gradient(135deg, #f6f0e6, #72efe7 48%, #ef7f9c);
+        box-shadow: 0 16px 44px rgba(85, 222, 214, 0.15);
       }
 
       .brand-name {
+        display: block;
         font-size: 15px;
-        font-weight: 720;
-        letter-spacing: -0.01em;
+        font-weight: 760;
+        letter-spacing: -0.03em;
       }
 
       .brand-line {
-        color: var(--faint);
+        display: block;
+        margin-top: 1px;
+        color: var(--soft);
         font-size: 12px;
       }
 
       .top-links {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid rgba(246, 240, 230, 0.1);
+        border-radius: 999px;
+        background: rgba(246, 240, 230, 0.04);
       }
 
       .top-link {
-        min-height: 36px;
+        min-height: 34px;
         padding: 0 12px;
-        border: 1px solid transparent;
         border-radius: 999px;
         display: inline-flex;
         align-items: center;
-        text-decoration: none;
         color: var(--muted);
         font-size: 13px;
-        transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+        text-decoration: none;
+        transition: color 160ms ease, background 160ms ease;
       }
 
       .top-link:hover {
         color: var(--ink);
-        border-color: var(--line);
-        background: rgba(255, 255, 255, 0.045);
+        background: rgba(246, 240, 230, 0.08);
       }
 
       main {
         flex: 1;
         display: grid;
         align-content: center;
-        padding: 76px 0 56px;
+        padding: 72px 0 52px;
       }
 
       .hero {
-        max-width: 980px;
-        margin: 0 auto;
-        text-align: center;
+        display: grid;
+        grid-template-columns: minmax(0, 0.98fr) minmax(360px, 1.02fr);
+        gap: 54px;
+        align-items: center;
       }
 
       .eyebrow {
         width: fit-content;
-        margin: 0 auto;
-        border: 1px solid rgba(247, 243, 236, 0.14);
+        border: 1px solid rgba(246, 240, 230, 0.14);
         border-radius: 999px;
-        padding: 7px 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 9px;
-        background: rgba(247, 243, 236, 0.055);
-        color: rgba(247, 243, 236, 0.76);
-        font-size: 13px;
-        font-weight: 620;
-        backdrop-filter: blur(18px);
-      }
-
-      .signal {
-        width: 7px;
-        height: 7px;
-        border-radius: 999px;
-        background: var(--cyan);
-        box-shadow: 0 0 0 5px rgba(56, 232, 223, 0.1);
+        padding: 7px 11px;
+        color: rgba(246, 240, 230, 0.78);
+        background: rgba(246, 240, 230, 0.05);
+        font-size: 12px;
+        font-weight: 650;
+        letter-spacing: 0.02em;
       }
 
       h1 {
-        margin: 28px auto 0;
-        max-width: 900px;
-        font-size: clamp(54px, 9vw, 118px);
-        line-height: 0.9;
-        font-weight: 780;
-        letter-spacing: -0.07em;
+        margin: 26px 0 0;
+        max-width: 620px;
+        color: #fff9ef;
+        font-size: clamp(58px, 8.2vw, 116px);
+        line-height: 0.88;
+        font-weight: 820;
+        letter-spacing: -0.075em;
       }
 
-      .hero-gradient {
-        background: linear-gradient(110deg, #fffaf0 0%, #eafffb 34%, #e8e6ff 67%, #ffdce7 100%);
+      .wordline {
+        display: block;
+      }
+
+      .wordmark-x {
+        position: relative;
+        display: inline-block;
+        margin: 0 0.018em;
+        color: transparent;
+        background: linear-gradient(130deg, var(--cyan), #f8e2aa 48%, var(--rose));
         -webkit-background-clip: text;
         background-clip: text;
-        color: transparent;
+      }
+
+      .wordmark-x::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 51%;
+        width: 0.16em;
+        height: 0.16em;
+        border-radius: 999px;
+        transform: translate(-50%, -50%);
+        background: #fff7e9;
+        box-shadow: 0 0 22px rgba(85, 222, 214, 0.62);
       }
 
       .subtitle {
-        margin: 28px auto 0;
-        max-width: 660px;
+        margin: 26px 0 0;
+        max-width: 560px;
         color: var(--muted);
-        font-size: clamp(17px, 2vw, 21px);
-        line-height: 1.68;
-        letter-spacing: 0;
+        font-size: clamp(17px, 2vw, 20px);
+        line-height: 1.72;
       }
 
-      .primary-actions {
+      .actions {
         margin-top: 34px;
         display: flex;
-        justify-content: center;
         flex-wrap: wrap;
         gap: 12px;
       }
 
-      .pill-button {
+      .button {
         min-height: 48px;
         padding: 0 18px;
         border-radius: 999px;
@@ -225,136 +229,216 @@ const html = String.raw`<!doctype html>
         align-items: center;
         justify-content: center;
         gap: 10px;
-        text-decoration: none;
+        border: 1px solid rgba(246, 240, 230, 0.16);
+        color: var(--ink);
+        background: rgba(246, 240, 230, 0.065);
         font-size: 14px;
         font-weight: 720;
-        border: 1px solid var(--line);
-        color: var(--ink);
-        background: rgba(255, 255, 255, 0.075);
-        transition: transform 170ms ease, border-color 170ms ease, background 170ms ease;
+        text-decoration: none;
+        transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
       }
 
-      .pill-button.primary {
-        color: #07080b;
+      .button.primary {
+        color: #0b0a08;
         border-color: transparent;
-        background: linear-gradient(135deg, #f9f4ea 0%, #88fff8 45%, #ff7aa1 100%);
-        box-shadow: 0 24px 70px rgba(56, 232, 223, 0.15);
+        background: linear-gradient(135deg, #fff8ec, #82eee6 48%, #ef7898);
       }
 
-      .pill-button:hover {
+      .button:hover {
         transform: translateY(-1px);
-        border-color: rgba(247, 243, 236, 0.26);
-        background: rgba(255, 255, 255, 0.11);
+        border-color: rgba(246, 240, 230, 0.26);
+        background: rgba(246, 240, 230, 0.1);
       }
 
-      .pill-button.primary:hover {
-        background: linear-gradient(135deg, #fffaf1 0%, #9ffff9 45%, #ff8aab 100%);
+      .button.primary:hover {
+        background: linear-gradient(135deg, #fff8ec, #9ff7f1 48%, #f18da6);
+      }
+
+      .studio {
+        position: relative;
+        min-height: 520px;
+        border: 1px solid rgba(246, 240, 230, 0.12);
+        border-radius: 36px;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(246, 240, 230, 0.1), rgba(246, 240, 230, 0.035)),
+          #11100d;
+        box-shadow: 0 36px 110px rgba(0, 0, 0, 0.38);
+      }
+
+      .studio::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 26% 24%, rgba(215, 176, 108, 0.22), transparent 28%),
+          radial-gradient(circle at 82% 30%, rgba(85, 222, 214, 0.18), transparent 28%);
+        opacity: 0.85;
+      }
+
+      .studio-grid {
+        position: absolute;
+        inset: 18px;
+        display: grid;
+        grid-template-columns: 1fr 0.86fr;
+        grid-template-rows: 1fr 0.82fr;
+        gap: 14px;
+      }
+
+      .preview-card {
+        position: relative;
+        border: 1px solid rgba(246, 240, 230, 0.12);
+        border-radius: 26px;
+        overflow: hidden;
+        background: rgba(246, 240, 230, 0.075);
+        backdrop-filter: blur(16px);
+      }
+
+      .preview-card img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        opacity: 0.82;
+        filter: saturate(0.88) contrast(1.02);
+      }
+
+      .preview-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.48));
+      }
+
+      .preview-card.large {
+        grid-row: span 2;
+      }
+
+      .studio-label {
+        position: absolute;
+        left: 18px;
+        bottom: 16px;
+        z-index: 2;
+      }
+
+      .studio-label strong {
+        display: block;
+        font-size: 18px;
+        letter-spacing: -0.04em;
+      }
+
+      .studio-label span {
+        display: block;
+        margin-top: 5px;
+        color: rgba(246, 240, 230, 0.66);
+        font-size: 12px;
+      }
+
+      .quiet-card {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .quiet-card .mini-mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        color: #0b0a08;
+        font-weight: 860;
+        background: linear-gradient(135deg, #fff8ec, var(--cyan));
+      }
+
+      .quiet-card h3 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.05;
+        letter-spacing: -0.05em;
+      }
+
+      .quiet-card p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.58;
       }
 
       .product-grid {
-        margin-top: 70px;
+        margin-top: 44px;
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
+        gap: 14px;
       }
 
       .product-card {
-        min-height: 276px;
-        padding: 24px;
+        min-height: 226px;
+        padding: 20px;
         border: 1px solid var(--line);
         border-radius: 28px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        overflow: hidden;
-        position: relative;
+        color: var(--ink);
+        background: rgba(246, 240, 230, 0.055);
         text-decoration: none;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.088), rgba(255, 255, 255, 0.035)),
-          rgba(255, 255, 255, 0.035);
-        box-shadow: 0 24px 90px rgba(0, 0, 0, 0.24);
-        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-      }
-
-      .product-card::before {
-        content: "";
-        position: absolute;
-        inset: -1px;
-        opacity: 0;
-        background: radial-gradient(circle at 30% 0%, var(--accent), transparent 36%);
-        transition: opacity 180ms ease;
+        transition: transform 170ms ease, background 170ms ease, border-color 170ms ease;
       }
 
       .product-card:hover {
-        transform: translateY(-4px);
-        border-color: rgba(247, 243, 236, 0.26);
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
-          rgba(255, 255, 255, 0.04);
-      }
-
-      .product-card:hover::before {
-        opacity: 0.16;
-      }
-
-      .product-card > * {
-        position: relative;
+        transform: translateY(-3px);
+        border-color: rgba(246, 240, 230, 0.24);
+        background: rgba(246, 240, 230, 0.085);
       }
 
       .product-head {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
-        gap: 16px;
+        gap: 14px;
       }
 
       .logo-lockup {
-        width: 146px;
-        height: 58px;
-        padding: 9px 12px;
-        border: 1px solid rgba(247, 243, 236, 0.12);
-        border-radius: 19px;
+        height: 52px;
         display: inline-flex;
         align-items: center;
         gap: 10px;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.035)),
-          rgba(255, 255, 255, 0.035);
       }
 
       .logo-symbol {
-        flex: 0 0 auto;
-        width: 36px;
-        height: 36px;
-        border-radius: 13px;
+        width: 38px;
+        height: 38px;
+        border-radius: 15px;
         display: grid;
         place-items: center;
-        overflow: hidden;
         position: relative;
-        color: #08080b;
+        overflow: hidden;
+        color: #0b0a08;
         font-size: 12px;
         font-weight: 860;
         letter-spacing: -0.03em;
         background:
-          radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.4) 24%, transparent 46%),
-          linear-gradient(135deg, #fffaf0, var(--accent));
-        box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
+          radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.3) 25%, transparent 48%),
+          linear-gradient(135deg, #fff8ec, var(--accent));
       }
 
-      .logo-symbol::before {
+      .logo-symbol::after {
         content: "";
         position: absolute;
+        right: -5px;
+        top: -5px;
         width: 17px;
         height: 17px;
-        right: -5px;
-        top: -4px;
         border-radius: 999px;
-        background: rgba(255, 95, 143, 0.9);
+        background: rgba(235, 111, 145, 0.92);
       }
 
       .logo-symbol span,
       .logo-symbol svg {
         position: relative;
+        z-index: 1;
       }
 
       .nultica-symbol svg {
@@ -362,104 +446,98 @@ const html = String.raw`<!doctype html>
         height: 19px;
       }
 
-      .ais-symbol {
-        --accent: var(--gold);
-      }
-
       .logo-word {
-        min-width: 0;
-        color: rgba(247, 243, 236, 0.92);
+        color: rgba(246, 240, 230, 0.94);
         font-size: 15px;
         font-weight: 760;
-        letter-spacing: -0.03em;
-        white-space: nowrap;
+        letter-spacing: -0.035em;
       }
 
       .logo-word small {
         display: block;
         margin-top: 1px;
-        color: var(--faint);
+        color: var(--soft);
         font-size: 10px;
-        font-weight: 620;
+        font-weight: 640;
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
 
       .product-tag {
-        color: var(--faint);
-        font-size: 12px;
+        color: var(--soft);
+        font-size: 11px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
 
-      .product-body {
-        margin-top: 42px;
-      }
-
       .product-card h2 {
-        margin: 0;
-        font-size: 30px;
+        margin: 34px 0 0;
+        font-size: 26px;
         line-height: 1;
-        letter-spacing: -0.04em;
+        letter-spacing: -0.05em;
       }
 
       .product-card p {
-        margin: 16px 0 0;
-        max-width: 290px;
+        margin: 13px 0 0;
+        max-width: 300px;
         color: var(--muted);
-        font-size: 15px;
-        line-height: 1.72;
+        font-size: 14px;
+        line-height: 1.66;
       }
 
       .product-foot {
-        margin-top: 28px;
+        margin-top: 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 20px;
-        color: rgba(247, 243, 236, 0.84);
+        color: rgba(246, 240, 230, 0.84);
         font-size: 14px;
         font-weight: 680;
       }
 
       .arrow {
-        width: 34px;
-        height: 34px;
+        width: 32px;
+        height: 32px;
+        border: 1px solid rgba(246, 240, 230, 0.14);
         border-radius: 999px;
         display: grid;
         place-items: center;
-        border: 1px solid rgba(247, 243, 236, 0.16);
-        background: rgba(255, 255, 255, 0.05);
-        transition: transform 180ms ease;
-      }
-
-      .product-card:hover .arrow {
-        transform: translateX(2px);
-      }
-
-      .livepilot {
-        --accent: var(--cyan);
-      }
-
-      .nultica {
-        --accent: var(--violet);
+        background: rgba(246, 240, 230, 0.05);
       }
 
       .ais {
         --accent: var(--gold);
       }
 
+      .nultica {
+        --accent: var(--violet);
+      }
+
+      .livepilot {
+        --accent: var(--cyan);
+      }
+
       footer {
         display: flex;
         justify-content: space-between;
-        gap: 18px;
-        color: var(--faint);
-        font-size: 13px;
-        border-top: 1px solid rgba(247, 243, 236, 0.09);
+        gap: 20px;
         padding-top: 20px;
+        border-top: 1px solid rgba(246, 240, 230, 0.1);
+        color: var(--soft);
+        font-size: 13px;
       }
 
-      @media (max-width: 880px) {
+      @media (max-width: 980px) {
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .studio {
+          min-height: 460px;
+        }
+      }
+
+      @media (max-width: 760px) {
         .shell {
           width: min(100% - 28px, 680px);
           padding-top: 22px;
@@ -470,36 +548,24 @@ const html = String.raw`<!doctype html>
         }
 
         main {
-          align-content: start;
-          padding: 62px 0 44px;
-        }
-
-        .hero {
-          text-align: left;
-        }
-
-        .eyebrow,
-        .subtitle {
-          margin-left: 0;
+          padding: 50px 0 40px;
         }
 
         h1 {
-          margin-left: 0;
-          font-size: clamp(54px, 16vw, 78px);
-          letter-spacing: -0.065em;
+          font-size: clamp(56px, 18vw, 82px);
         }
 
-        .primary-actions {
-          justify-content: flex-start;
-        }
-
+        .studio-grid,
         .product-grid {
-          margin-top: 48px;
           grid-template-columns: 1fr;
         }
 
-        .product-card {
-          min-height: 230px;
+        .studio {
+          min-height: 620px;
+        }
+
+        .preview-card.large {
+          grid-row: span 1;
         }
 
         footer {
@@ -511,8 +577,8 @@ const html = String.raw`<!doctype html>
         *,
         *::before,
         *::after {
-          scroll-behavior: auto !important;
           transition: none !important;
+          scroll-behavior: auto !important;
         }
       }
     </style>
@@ -520,12 +586,12 @@ const html = String.raw`<!doctype html>
   <body>
     <div class="shell">
       <header class="topbar">
-        <a class="brand" href="https://haoxagent.com" aria-label="HaoXAgent home">
+        <a class="brand" href="https://haoxagent.com" aria-label="Hao X Agent home">
           <div class="brand-mark">HX</div>
-          <div class="brand-copy">
-            <div class="brand-name">HaoXAgent</div>
-            <div class="brand-line">AI-native product lab</div>
-          </div>
+          <span>
+            <span class="brand-name">Hao X Agent</span>
+            <span class="brand-line">Product studio for focused intelligence</span>
+          </span>
         </a>
 
         <nav class="top-links" aria-label="Products">
@@ -537,34 +603,66 @@ const html = String.raw`<!doctype html>
 
       <main>
         <section class="hero" aria-labelledby="hero-title">
-          <div class="eyebrow"><span class="signal"></span> Independent AI products for practical work</div>
-          <h1 id="hero-title"><span class="hero-gradient">Welcome to HaoXAgent</span></h1>
-          <p class="subtitle">
-            We build focused AI systems for creators, operators, and modern teams:
-            from live-stream growth to collaborative coding and enterprise intelligence.
-          </p>
+          <div>
+            <div class="eyebrow">Products for thoughtful, high-leverage work</div>
+            <h1 id="hero-title">
+              <span class="wordline">Hao <span class="wordmark-x">X</span></span>
+              <span class="wordline">Agent</span>
+            </h1>
+            <p class="subtitle">
+              A small collection of focused systems for enterprise knowledge,
+              agent collaboration, and creator growth. Built to make complex work
+              feel calmer, sharper, and easier to act on.
+            </p>
 
-          <div class="primary-actions" aria-label="Primary product links">
-            <a class="pill-button primary" href="https://ais.prod.torchv.com/">TorchV AIS <span aria-hidden="true">→</span></a>
-            <a class="pill-button" href="https://coding.torchv.com/">Open Nultica</a>
-            <a class="pill-button" href="https://livepilot.haoxagent.com">Enter LivePilot</a>
+            <div class="actions" aria-label="Primary product links">
+              <a class="button primary" href="https://ais.prod.torchv.com/">Explore TorchV AIS <span aria-hidden="true">→</span></a>
+              <a class="button" href="https://coding.torchv.com/">Open Nultica</a>
+              <a class="button" href="https://livepilot.haoxagent.com">Enter LivePilot</a>
+            </div>
           </div>
+
+          <aside class="studio" aria-label="Product previews">
+            <div class="studio-grid">
+              <div class="preview-card large">
+                <img src="https://torchv.com/img/hero2.png" alt="TorchV AIS product architecture preview" />
+                <div class="studio-label">
+                  <strong>TorchV AIS</strong>
+                  <span>Knowledge systems for organizations</span>
+                </div>
+              </div>
+
+              <div class="preview-card">
+                <img src="https://coding.torchv.com/_next/image?url=%2Fimages%2Flanding-hero.png&w=1200&q=85" alt="Nultica product board preview" />
+                <div class="studio-label">
+                  <strong>Nultica</strong>
+                  <span>Human and agent project space</span>
+                </div>
+              </div>
+
+              <div class="preview-card quiet-card">
+                <div class="mini-mark">LP</div>
+                <div>
+                  <h3>LivePilot turns stream data into next-session action.</h3>
+                  <p>Upload, review, diagnose, and prepare the next live session with a clearer operating loop.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
         </section>
 
-        <section class="product-grid" aria-label="HaoXAgent product matrix">
+        <section class="product-grid" aria-label="Hao X Agent product matrix">
           <a class="product-card ais" href="https://ais.prod.torchv.com/" rel="noopener">
             <div>
               <div class="product-head">
                 <div class="logo-lockup" aria-label="TorchV AIS logo">
-                  <div class="logo-symbol ais-symbol"><span>TV</span></div>
+                  <div class="logo-symbol"><span>TV</span></div>
                   <div class="logo-word">TorchV<small>AIS</small></div>
                 </div>
-                <div class="product-tag">Enterprise intelligence</div>
+                <div class="product-tag">Enterprise</div>
               </div>
-              <div class="product-body">
-                <h2>TorchV AIS</h2>
-                <p>企业知识与智能应用入口，连接业务场景、知识资产和 AI 工作流。</p>
-              </div>
+              <h2>TorchV AIS</h2>
+              <p>企业知识与智能应用入口，连接业务场景、知识资产和 AI 工作流。</p>
             </div>
             <div class="product-foot">
               <span>访问 AIS</span>
@@ -578,17 +676,15 @@ const html = String.raw`<!doctype html>
                 <div class="logo-lockup" aria-label="Nultica logo">
                   <div class="logo-symbol nultica-symbol">
                     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
-                      <path d="M12 2.8v18.4M2.8 12h18.4M5.5 5.5l13 13M18.5 5.5l-13 13" stroke="#08080b" stroke-width="2.5" stroke-linecap="round"/>
+                      <path d="M12 2.8v18.4M2.8 12h18.4M5.5 5.5l13 13M18.5 5.5l-13 13" stroke="#0b0a08" stroke-width="2.5" stroke-linecap="round"/>
                     </svg>
                   </div>
                   <div class="logo-word">Nultica<small>Agent space</small></div>
                 </div>
-                <div class="product-tag">Agent workspace</div>
+                <div class="product-tag">Workspace</div>
               </div>
-              <div class="product-body">
-                <h2>Nultica</h2>
-                <p>面向人类与智能体协作的项目空间，把想法、任务和执行过程放在一起。</p>
-              </div>
+              <h2>Nultica</h2>
+              <p>面向人类与智能体协作的项目空间，把想法、任务和执行过程放在一起。</p>
             </div>
             <div class="product-foot">
               <span>打开空间</span>
@@ -600,15 +696,13 @@ const html = String.raw`<!doctype html>
             <div>
               <div class="product-head">
                 <div class="logo-lockup" aria-label="LivePilot logo">
-                  <div class="logo-symbol livepilot-symbol"><span>LP</span></div>
-                  <div class="logo-word">LivePilot<small>Growth AI</small></div>
+                  <div class="logo-symbol"><span>LP</span></div>
+                  <div class="logo-word">LivePilot<small>Growth loop</small></div>
                 </div>
-                <div class="product-tag">Creator growth</div>
+                <div class="product-tag">Creator</div>
               </div>
-              <div class="product-body">
-                <h2>LivePilot</h2>
-                <p>AI 直播增长助手。把直播截图、数据和复盘变成下一场可执行的开播方案。</p>
-              </div>
+              <h2>LivePilot</h2>
+              <p>AI 直播增长助手。把直播截图、数据和复盘变成下一场可执行的开播方案。</p>
             </div>
             <div class="product-foot">
               <span>进入产品</span>
@@ -619,8 +713,8 @@ const html = String.raw`<!doctype html>
       </main>
 
       <footer>
-        <span>© 2026 HaoXAgent</span>
-        <span>Independent AI systems. Designed for real work.</span>
+        <span>© 2026 Hao X Agent</span>
+        <span>Independent systems. Designed for real work.</span>
       </footer>
     </div>
   </body>
