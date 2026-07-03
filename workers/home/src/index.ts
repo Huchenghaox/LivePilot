@@ -6,8 +6,33 @@ const html = String.raw`<!doctype html>
     <title>Hao X Agent</title>
     <meta
       name="description"
-      content="Hao X Agent is a product studio building focused AI systems for creators, operators, and modern teams."
+      content="Hao X Agent builds focused AI systems for enterprise intelligence, agent collaboration, and creator growth. Explore TorchV AIS, Nultica, and LivePilot."
     />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://haoxagent.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Hao X Agent" />
+    <meta property="og:title" content="Hao X Agent" />
+    <meta
+      property="og:description"
+      content="Focused AI systems for enterprise knowledge, agent collaboration, and creator growth."
+    />
+    <meta property="og:url" content="https://haoxagent.com/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Hao X Agent",
+        "url": "https://haoxagent.com/",
+        "description": "Hao X Agent builds focused AI systems for enterprise intelligence, agent collaboration, and creator growth.",
+        "sameAs": [
+          "https://livepilot.haoxagent.com",
+          "https://coding.torchv.com/",
+          "https://ais.prod.torchv.com/"
+        ]
+      }
+    </script>
     <style>
       :root {
         color-scheme: dark;
@@ -798,12 +823,61 @@ const html = String.raw`<!doctype html>
   </body>
 </html>`;
 
+const robots = `User-agent: *
+Allow: /
+
+Sitemap: https://haoxagent.com/sitemap.xml
+`;
+
+const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://haoxagent.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://livepilot.haoxagent.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://coding.torchv.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ais.prod.torchv.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>
+`;
+
 export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname === "/health") {
       return Response.json({ ok: true, service: "haoxagent-home" });
+    }
+
+    if (url.pathname === "/robots.txt") {
+      return new Response(robots, {
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "public, max-age=3600"
+        }
+      });
+    }
+
+    if (url.pathname === "/sitemap.xml") {
+      return new Response(sitemap, {
+        headers: {
+          "content-type": "application/xml; charset=utf-8",
+          "cache-control": "public, max-age=3600"
+        }
+      });
     }
 
     return new Response(html, {
