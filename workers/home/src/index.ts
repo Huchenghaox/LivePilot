@@ -215,11 +215,11 @@ const html = String.raw`<!doctype html>
 
       .hero {
         display: grid;
-        grid-template-columns: minmax(0, 1.12fr) minmax(340px, 0.88fr);
-        gap: 42px;
+        grid-template-columns: minmax(0, 0.98fr) minmax(380px, 1.02fr);
+        gap: 54px;
         align-items: center;
-        min-height: 590px;
-        padding: 56px 0 48px;
+        min-height: 560px;
+        padding: 50px 0 28px;
       }
 
       .eyebrow {
@@ -248,21 +248,28 @@ const html = String.raw`<!doctype html>
       }
 
       .hero-title {
-        max-width: 780px;
+        max-width: 690px;
         margin: 0;
-        font-size: clamp(48px, 6.4vw, 86px);
-        line-height: 1.02;
-        letter-spacing: -0.065em;
+        font-size: clamp(42px, 5.15vw, 68px);
+        line-height: 1.12;
+        letter-spacing: -0.056em;
         font-weight: 930;
         word-break: keep-all;
       }
 
+      .hero-title .accent {
+        background: linear-gradient(135deg, #1668ff 8%, #5c3cff 82%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
       .hero-copy {
-        max-width: 640px;
-        margin: 24px 0 0;
+        max-width: 600px;
+        margin: 20px 0 0;
         color: var(--ink-soft);
-        font-size: clamp(17px, 2.2vw, 22px);
-        line-height: 1.72;
+        font-size: clamp(16px, 1.7vw, 19px);
+        line-height: 1.75;
         font-weight: 580;
       }
 
@@ -314,39 +321,38 @@ const html = String.raw`<!doctype html>
 
       .visual-stage {
         position: relative;
-        min-height: 480px;
+        min-height: 500px;
         display: grid;
         place-items: center;
       }
 
       .visual-card {
         position: relative;
-        width: min(480px, 100%);
+        width: min(620px, 100%);
         aspect-ratio: 1;
-        border: 1px solid rgba(58, 78, 150, 0.13);
-        border-radius: 46px;
+        border: 0;
+        border-radius: 0;
         background:
-          radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.48) 50%, rgba(238, 244, 255, 0.34)),
-          linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(245, 248, 255, 0.62));
-        box-shadow: var(--shadow);
-        overflow: hidden;
-        backdrop-filter: blur(24px);
+          radial-gradient(circle at 62% 50%, rgba(122, 76, 255, 0.23), transparent 33%),
+          radial-gradient(circle at 42% 64%, rgba(39, 200, 255, 0.18), transparent 36%);
+        box-shadow: none;
+        overflow: visible;
       }
 
       .visual-card::before,
       .visual-card::after {
         content: "";
         position: absolute;
-        inset: 11%;
-        border: 1px solid rgba(38, 99, 255, 0.13);
+        inset: 16% 1%;
+        border: 1px solid rgba(38, 99, 255, 0.16);
         border-radius: 50%;
-        transform: rotate(-18deg) scaleX(1.22);
+        transform: rotate(-18deg) scaleX(1.2);
       }
 
       .visual-card::after {
-        inset: 19%;
+        inset: 24% 3%;
         border-color: rgba(122, 76, 255, 0.14);
-        transform: rotate(31deg) scaleX(1.28);
+        transform: rotate(23deg) scaleX(1.26);
       }
 
       .x-core {
@@ -354,17 +360,22 @@ const html = String.raw`<!doctype html>
         inset: 0;
         display: grid;
         place-items: center;
-        filter: drop-shadow(0 34px 55px rgba(87, 93, 255, 0.3));
+        filter: drop-shadow(0 34px 44px rgba(70, 116, 255, 0.34));
       }
 
       .x-core span {
         position: absolute;
-        width: 80%;
-        height: 23%;
+        width: 68%;
+        height: 17%;
         border-radius: 999px;
         background:
-          linear-gradient(90deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.05) 18%, rgba(255, 255, 255, 0.22) 72%, rgba(255, 255, 255, 0.76)),
+          radial-gradient(circle at 24% 28%, rgba(255, 255, 255, 0.95), transparent 9%),
+          radial-gradient(circle at 65% 62%, rgba(255, 255, 255, 0.8), transparent 7%),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.08) 18%, rgba(255, 255, 255, 0.28) 72%, rgba(255, 255, 255, 0.82)),
           var(--gradient);
+        box-shadow:
+          inset 0 0 0 2px rgba(255, 255, 255, 0.42),
+          inset 0 -18px 28px rgba(255, 255, 255, 0.16);
       }
 
       .x-core span:first-child {
@@ -381,7 +392,7 @@ const html = String.raw`<!doctype html>
         top: 50%;
         width: 86px;
         height: 86px;
-        border-radius: 30px;
+        border-radius: 28px;
         transform: translate(-50%, -50%) rotate(45deg);
         background: rgba(255, 255, 255, 0.82);
         box-shadow:
@@ -415,23 +426,75 @@ const html = String.raw`<!doctype html>
       }
 
       .label-one {
-        left: 9%;
-        top: 18%;
-      }
-
-      .label-two {
-        right: 9%;
+        left: 18%;
         top: 27%;
       }
 
+      .label-two {
+        right: 12%;
+        top: 35%;
+      }
+
       .label-three {
-        left: 13%;
-        bottom: 20%;
+        left: 11%;
+        bottom: 26%;
       }
 
       .label-four {
-        right: 13%;
-        bottom: 15%;
+        right: 16%;
+        bottom: 24%;
+      }
+
+      .capability-rail {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0;
+        margin: 0 auto 24px;
+        padding: 12px 18px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: 0 18px 60px rgba(58, 77, 145, 0.1);
+        backdrop-filter: blur(20px);
+      }
+
+      .capability-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 64px;
+        padding: 8px 16px;
+        border-right: 1px solid rgba(48, 67, 141, 0.1);
+      }
+
+      .capability-item:last-child {
+        border-right: 0;
+      }
+
+      .capability-icon {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 14px;
+        color: white;
+        background: var(--gradient);
+        font-size: 18px;
+        font-weight: 900;
+        box-shadow: 0 10px 24px rgba(75, 95, 255, 0.18);
+      }
+
+      .capability-title {
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 860;
+      }
+
+      .capability-copy {
+        margin-top: 2px;
+        color: var(--faint);
+        font-size: 12px;
+        font-weight: 650;
       }
 
       .section-head {
@@ -478,13 +541,14 @@ const html = String.raw`<!doctype html>
         position: relative;
         display: flex;
         flex-direction: column;
-        min-height: 440px;
-        padding: 26px;
+        min-height: 330px;
+        padding: 30px;
         border: 1px solid var(--line);
         border-radius: var(--radius-lg);
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.68)),
-          radial-gradient(circle at 18% 0%, rgba(39, 200, 255, 0.12), transparent 34%);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.73)),
+          radial-gradient(circle at 86% 92%, rgba(39, 200, 255, 0.12), transparent 36%),
+          radial-gradient(circle at 14% 6%, rgba(122, 76, 255, 0.11), transparent 30%);
         box-shadow: 0 20px 70px rgba(58, 77, 145, 0.1);
         overflow: hidden;
         transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
@@ -512,50 +576,138 @@ const html = String.raw`<!doctype html>
         z-index: 1;
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 18px;
         margin-bottom: 22px;
       }
 
       .product-logo {
-        display: grid;
-        place-items: center;
-        width: 58px;
-        height: 58px;
-        border-radius: 20px;
-        color: white;
-        background: var(--gradient);
-        box-shadow: 0 16px 38px rgba(78, 99, 255, 0.22);
-        font-weight: 900;
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 84px;
+        height: 68px;
+        color: var(--ink);
+        background: transparent;
+        box-shadow: none;
+        font-weight: 920;
+        letter-spacing: -0.06em;
       }
 
       .product-logo.torchv {
-        background: linear-gradient(135deg, #121a35, #1769ff 52%, #7a4cff);
+        justify-content: flex-start;
+        color: #07122f;
       }
 
       .product-logo.nultica {
-        color: #1e2650;
-        background: linear-gradient(135deg, #ffffff, #dbe7ff 46%, #d7c5ff);
+        width: 86px;
       }
 
       .product-logo.livepilot {
-        color: #081232;
-        background: linear-gradient(135deg, #dffffa, #7ed7ff 42%, #c3b3ff);
+        width: 90px;
       }
 
-      .play-dot {
-        display: inline-block;
-        width: 0;
-        height: 0;
-        margin-left: 4px;
-        border-top: 7px solid transparent;
-        border-bottom: 7px solid transparent;
-        border-left: 11px solid currentColor;
+      .torchv-mark {
+        position: relative;
+        width: 62px;
+        height: 58px;
+        clip-path: polygon(50% 0, 94% 23%, 94% 74%, 50% 100%, 6% 74%, 6% 23%);
+        background: linear-gradient(145deg, #1668ff 4%, #23d1d7 82%);
+        box-shadow: 0 16px 34px rgba(23, 105, 255, 0.18);
+      }
+
+      .torchv-mark::before {
+        content: "";
+        position: absolute;
+        left: 18px;
+        top: 13px;
+        width: 10px;
+        height: 34px;
+        background: white;
+        transform: skewY(-28deg);
+      }
+
+      .torchv-mark::after {
+        content: "";
+        position: absolute;
+        right: 15px;
+        top: 13px;
+        width: 10px;
+        height: 34px;
+        background: white;
+        transform: skewY(28deg);
+      }
+
+      .nultica-mark {
+        position: relative;
+        width: 78px;
+        height: 46px;
+        filter: drop-shadow(0 14px 24px rgba(93, 77, 255, 0.2));
+      }
+
+      .nultica-mark::before,
+      .nultica-mark::after {
+        content: "";
+        position: absolute;
+        top: 7px;
+        width: 36px;
+        height: 28px;
+        border: 10px solid transparent;
+        border-radius: 999px;
+      }
+
+      .nultica-mark::before {
+        left: 2px;
+        border-color: #26c6ff #26c6ff #1769ff #1769ff;
+        transform: rotate(42deg);
+      }
+
+      .nultica-mark::after {
+        right: 2px;
+        border-color: #7a4cff #7a4cff #a15cff #a15cff;
+        transform: rotate(-42deg);
+      }
+
+      .livepilot-mark {
+        position: relative;
+        width: 86px;
+        height: 58px;
+        filter: drop-shadow(0 14px 24px rgba(93, 77, 255, 0.2));
+      }
+
+      .livepilot-mark::before {
+        content: "LP";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        font-size: 42px;
+        line-height: 1;
+        font-weight: 950;
+        font-style: italic;
+        letter-spacing: -0.12em;
+        background: linear-gradient(135deg, #1769ff, #22c9ff 46%, #7a4cff 80%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .livepilot-mark::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        bottom: 11px;
+        width: 42px;
+        height: 24px;
+        border: 4px solid #7a4cff;
+        border-left-color: transparent;
+        border-radius: 50%;
+        transform: rotate(-12deg);
       }
 
       .product-name {
         margin: 0;
         color: var(--ink);
-        font-size: 23px;
+        font-size: 25px;
         line-height: 1.08;
         letter-spacing: -0.045em;
         font-weight: 910;
@@ -601,20 +753,32 @@ const html = String.raw`<!doctype html>
       }
 
       .card-link {
-        position: relative;
+        position: absolute;
         z-index: 1;
         display: inline-flex;
         align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        margin-top: 22px;
-        padding: 15px 16px;
-        border-radius: 18px;
-        color: white;
-        background: var(--gradient);
-        font-size: 14px;
+        justify-content: center;
+        right: 28px;
+        top: 28px;
+        width: 46px;
+        height: 46px;
+        margin-top: 0;
+        padding: 0;
+        border-radius: 50%;
+        color: #175dff;
+        background: rgba(255, 255, 255, 0.9);
+        font-size: 22px;
         font-weight: 850;
-        box-shadow: 0 18px 38px rgba(75, 95, 255, 0.22);
+        box-shadow: 0 14px 36px rgba(75, 95, 255, 0.18);
+      }
+
+      .card-link .link-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
       }
 
       .quick-links {
@@ -691,6 +855,18 @@ const html = String.raw`<!doctype html>
           grid-template-columns: 1fr;
         }
 
+        .capability-rail {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .capability-item:nth-child(3) {
+          border-right: 0;
+        }
+
+        .capability-item:nth-child(n + 4) {
+          border-top: 1px solid rgba(48, 67, 141, 0.1);
+        }
+
         .product-card {
           min-height: auto;
         }
@@ -724,8 +900,9 @@ const html = String.raw`<!doctype html>
         }
 
         .hero-title {
-          font-size: clamp(42px, 13vw, 62px);
-          line-height: 1.04;
+          font-size: clamp(38px, 11.5vw, 54px);
+          line-height: 1.13;
+          letter-spacing: -0.06em;
         }
 
         .hero-copy {
@@ -751,12 +928,28 @@ const html = String.raw`<!doctype html>
         }
 
         .visual-card {
-          border-radius: 32px;
+          width: min(420px, 112%);
         }
 
         .visual-label {
           padding: 9px 11px;
           font-size: 11px;
+        }
+
+        .capability-rail {
+          grid-template-columns: 1fr;
+          padding: 8px;
+          border-radius: 22px;
+        }
+
+        .capability-item {
+          min-height: 58px;
+          border-right: 0;
+          border-top: 1px solid rgba(48, 67, 141, 0.1);
+        }
+
+        .capability-item:first-child {
+          border-top: 0;
         }
 
         .section-head {
@@ -813,7 +1006,7 @@ const html = String.raw`<!doctype html>
         <div>
           <div class="eyebrow">AI Product Studio</div>
           <h1 class="hero-title">
-            探索 AI 产品、Agent<br />
+            探索 <span class="accent">AI</span> 产品、<span class="accent">Agent</span><br />
             与前沿信息
           </h1>
           <p class="hero-copy">
@@ -842,6 +1035,51 @@ const html = String.raw`<!doctype html>
         </div>
       </section>
 
+      <section class="shell capability-rail" aria-label="AI capability categories">
+        <div class="capability-item">
+          <span class="capability-icon">▣</span>
+          <span>
+            <strong class="capability-title">AI 知识库</strong>
+            <span class="capability-copy">知识管理与问答</span>
+          </span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">♙</span>
+          <span>
+            <strong class="capability-title">AI Agent</strong>
+            <span class="capability-copy">智能体与自动化</span>
+          </span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">▶</span>
+          <span>
+            <strong class="capability-title">AI 直播</strong>
+            <span class="capability-copy">直播增长与复盘</span>
+          </span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">✎</span>
+          <span>
+            <strong class="capability-title">AI 写作</strong>
+            <span class="capability-copy">内容创作与优化</span>
+          </span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">⌘</span>
+          <span>
+            <strong class="capability-title">AI 编程</strong>
+            <span class="capability-copy">开发与效率工具</span>
+          </span>
+        </div>
+        <div class="capability-item">
+          <span class="capability-icon">⌕</span>
+          <span>
+            <strong class="capability-title">AI 搜索</strong>
+            <span class="capability-copy">信息检索与洞察</span>
+          </span>
+        </div>
+      </section>
+
       <section id="products" class="shell" aria-labelledby="products-title">
         <div class="section-head">
           <div>
@@ -856,7 +1094,7 @@ const html = String.raw`<!doctype html>
         <div class="products">
           <article class="product-card" id="agents">
             <div class="product-top">
-              <div class="product-logo torchv" aria-hidden="true">TV</div>
+              <div class="product-logo torchv" aria-hidden="true"><span class="torchv-mark"></span></div>
               <div>
                 <h3 class="product-name">TorchV AIS</h3>
                 <div class="product-subtitle">Enterprise AI Knowledge Engine</div>
@@ -871,12 +1109,12 @@ const html = String.raw`<!doctype html>
               <span class="tag">Knowledge Engine</span>
               <span class="tag">Agent Workspace</span>
             </div>
-            <a class="card-link" href="https://ais.prod.torchv.com/" rel="noopener">Explore TorchV AIS <span>→</span></a>
+            <a class="card-link" href="https://ais.prod.torchv.com/" rel="noopener"><span class="link-label">Explore TorchV AIS</span><span>→</span></a>
           </article>
 
           <article class="product-card">
             <div class="product-top">
-              <div class="product-logo nultica" aria-hidden="true">NX</div>
+              <div class="product-logo nultica" aria-hidden="true"><span class="nultica-mark"></span></div>
               <div>
                 <h3 class="product-name">Nultica</h3>
                 <div class="product-subtitle">Multi-Agent Workflow OS</div>
@@ -891,12 +1129,12 @@ const html = String.raw`<!doctype html>
               <span class="tag">Workflow OS</span>
               <span class="tag">AI Workforce</span>
             </div>
-            <a class="card-link" href="https://coding.torchv.com/" rel="noopener">Open Nultica <span>→</span></a>
+            <a class="card-link" href="https://coding.torchv.com/" rel="noopener"><span class="link-label">Open Nultica</span><span>→</span></a>
           </article>
 
           <article class="product-card">
             <div class="product-top">
-              <div class="product-logo livepilot" aria-hidden="true">LP<span class="play-dot"></span></div>
+              <div class="product-logo livepilot" aria-hidden="true"><span class="livepilot-mark"></span></div>
               <div>
                 <h3 class="product-name">LivePilot</h3>
                 <div class="product-subtitle">AI Live Copilot</div>
@@ -911,7 +1149,7 @@ const html = String.raw`<!doctype html>
               <span class="tag">Replay Intelligence</span>
               <span class="tag">Growth Engine</span>
             </div>
-            <a class="card-link" href="https://livepilot.haoxagent.com/" rel="noopener">Enter LivePilot <span>→</span></a>
+            <a class="card-link" href="https://livepilot.haoxagent.com/" rel="noopener"><span class="link-label">Enter LivePilot</span><span>→</span></a>
           </article>
         </div>
       </section>
