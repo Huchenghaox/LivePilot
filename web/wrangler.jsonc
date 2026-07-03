@@ -6,10 +6,6 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "routes": [
     {
-      "pattern": "www.haoxagent.com/*",
-      "zone_name": "haoxagent.com"
-    },
-    {
       "pattern": "livepilot.haoxagent.com",
       "custom_domain": true
     }
