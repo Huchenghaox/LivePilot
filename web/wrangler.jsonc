@@ -8,6 +8,10 @@
     {
       "pattern": "www.haoxagent.com/*",
       "zone_name": "haoxagent.com"
+    },
+    {
+      "pattern": "livepilot.haoxagent.com",
+      "custom_domain": true
     }
   ],
   "assets": {
