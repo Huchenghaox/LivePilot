@@ -4,14 +4,52 @@ updates:
     directory: "/web"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
+    groups:
+      web-non-major:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
   - package-ecosystem: "pip"
     directory: "/api"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+      day: "monday"
+      time: "09:10"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
+    groups:
+      api-non-major:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+      day: "monday"
+      time: "09:20"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 2
+    groups:
+      actions-non-major:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
