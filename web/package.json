@@ -1,0 +1,36 @@
+{
+  "name": "livepilot-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "preview:cloudflare": "wrangler dev",
+    "deploy:cloudflare": "opennextjs-cloudflare deploy",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "lucide-react": "0.468.0",
+    "next": "^16.2.11",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.0",
+    "@types/node": "22.10.5",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.11",
+    "postcss": "^8.5.10",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.7.2",
+    "wrangler": "^4.104.0"
+  },
+  "optionalDependencies": {
+    "@next/swc-darwin-arm64": "^16.2.9"
+  }
+}

@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a problem in LivePilot
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the problem in plain language.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Go to...\n2. Click...\n3. See..."
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "Browser, OS, deployment type"
+  - type: textarea
+    id: safe_context
+    attributes:
+      label: Safe context
+      description: Do not include API keys, tokens, private screenshots, phone numbers, user data, or model provider credentials.
+    validations:
+      required: true

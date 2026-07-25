@@ -1,0 +1,64 @@
+services:
+  api:
+    build:
+      context: ./api
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_NAME: LivePilot
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/livepilot.db}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
+      INVITE_CODE: ${INVITE_CODE:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      SMS_ENABLED: ${SMS_ENABLED:-false}
+      SMS_PROVIDER: ${SMS_PROVIDER:-mock}
+      SMS_ACCESS_KEY_ID: ${SMS_ACCESS_KEY_ID:-}
+      SMS_ACCESS_KEY_SECRET: ${SMS_ACCESS_KEY_SECRET:-}
+      SMS_SIGN_NAME: ${SMS_SIGN_NAME:-}
+      SMS_TEMPLATE_CODE: ${SMS_TEMPLATE_CODE:-}
+      SMS_REGION: ${SMS_REGION:-}
+      SMS_CODE_TTL_SECONDS: ${SMS_CODE_TTL_SECONDS:-300}
+      SMS_SEND_INTERVAL_SECONDS: ${SMS_SEND_INTERVAL_SECONDS:-60}
+      SMS_HOURLY_LIMIT_PER_PHONE: ${SMS_HOURLY_LIMIT_PER_PHONE:-5}
+      SMS_DAILY_LIMIT_PER_PHONE: ${SMS_DAILY_LIMIT_PER_PHONE:-10}
+      SMS_HOURLY_LIMIT_PER_IP: ${SMS_HOURLY_LIMIT_PER_IP:-30}
+      VERIFICATION_MAX_ATTEMPTS: ${VERIFICATION_MAX_ATTEMPTS:-5}
+      LOGIN_FAIL_HOURLY_LIMIT: ${LOGIN_FAIL_HOURLY_LIMIT:-10}
+      REGISTER_HOURLY_LIMIT_PER_IP: ${REGISTER_HOURLY_LIMIT_PER_IP:-20}
+      PLATFORM_TEXT_API_BASE: ${PLATFORM_TEXT_API_BASE:-}
+      PLATFORM_TEXT_API_KEY: ${PLATFORM_TEXT_API_KEY:-}
+      PLATFORM_TEXT_MODEL: ${PLATFORM_TEXT_MODEL:-}
+      PLATFORM_VISION_API_BASE: ${PLATFORM_VISION_API_BASE:-}
+      PLATFORM_VISION_API_KEY: ${PLATFORM_VISION_API_KEY:-}
+      PLATFORM_VISION_MODEL: ${PLATFORM_VISION_MODEL:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - livepilot_database:/app/data
+      - livepilot_uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8000}
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  livepilot_database:
+  livepilot_uploads:

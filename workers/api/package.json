@@ -1,0 +1,22 @@
+{
+  "name": "livepilot-worker-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "dev": "wrangler dev --local --port 8787",
+    "deploy": "wrangler deploy",
+    "d1:migrate:local": "wrangler d1 migrations apply livepilot-production --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply livepilot-production --remote",
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "test": "npm run test:smoke",
+    "test:smoke": "node scripts/run-smoke-local.mjs",
+    "test:smoke:remote": "node scripts/smoke-worker.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260624.0",
+    "typescript": "5.7.2",
+    "wrangler": "^4.23.0"
+  }
+}
