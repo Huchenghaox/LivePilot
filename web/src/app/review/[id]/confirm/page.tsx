@@ -190,11 +190,6 @@ export default function ConfirmPage() {
       const fields = mergeTemplateFields(mergeCoreFields(result.fields?.length ? result.fields.map(normalizeField) : legacyFields(result), result));
       setMetrics(result);
       setMetricFields(fields);
-      console.info("LivePilot screenshot pipeline frontend rendered fields count", {
-        liveSessionId: params.id,
-        fieldCount: fields.filter((field) => !field.deleted).length,
-        fieldKeys: fields.filter((field) => !field.deleted).map((field) => field.metric_key)
-      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载失败");
     } finally {

@@ -216,7 +216,7 @@ Create or repair the first administrator with the Worker-side password hash form
 
 ```bash
 cd workers/api
-ADMIN_USERNAME=huchenghao ADMIN_PASSWORD='replace-with-real-password' ADMIN_NICKNAME='负责人' npm run seed:admin
+ADMIN_USERNAME=livepilotadmin ADMIN_PASSWORD='replace-with-real-password' ADMIN_NICKNAME='管理员' npm run seed:admin
 ```
 
 For local D1 testing, add `ADMIN_LOCAL=true`.

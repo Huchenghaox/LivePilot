@@ -7,6 +7,7 @@ type Env = {
   SMS_ENABLED?: string;
   SMS_PROVIDER?: string;
   SMS_CODE_TTL_SECONDS?: string;
+  CORS_ORIGINS?: string;
   MODEL_API_KEY?: string;
   MODEL_BASE_URL?: string;
   MODEL_TEXT_NAME?: string;
@@ -31,6 +32,7 @@ const passwordHashIterations = 60000;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    (globalThis as any).__LIVEPILOT_CORS_ORIGINS__ = env.CORS_ORIGINS || "";
     const url = new URL(request.url);
     try {
       if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
@@ -752,12 +754,11 @@ async function getSessionMetrics(request: Request, env: Env, sessionId: number):
     items,
     fields: items.map(metricToField)
   };
-  console.log("LivePilot screenshot pipeline /metrics API response", {
+  console.info("LivePilot screenshot metrics response summary", {
     user_id: user.id,
     live_session_id: sessionId,
     field_count: response.fields.length,
-    field_keys: response.fields.map((item: any) => item.metric_key),
-    response
+    field_keys: response.fields.map((item: any) => item.metric_key)
   });
   return ok(response);
 }
@@ -1199,7 +1200,7 @@ async function recognizeScreenshotWithModel(env: Env, bytes: Uint8Array, content
     ] }
   ], config, 1800, { userId, operation: "screenshot_recognition", purpose: "vision" });
   if (isDouyinDashboardResult(fixed)) return fixed;
-  console.log("LivePilot screenshot pipeline fallback to generic vision recognition", {
+  console.info("LivePilot screenshot recognition fallback summary", {
     user_id: userId,
     platform: fixed?.platform || null,
     screenshot_type: fixed?.screenshot_type || null,
@@ -1294,11 +1295,16 @@ async function callOpenAIJson(env: Env, model: string, messages: any[], config?:
     const text = data.choices?.[0]?.message?.content;
     if (!text) throw new Error("模型返回为空");
     if (log?.operation === "screenshot_recognition") {
-      console.log("LivePilot screenshot pipeline raw model response", { user_id: log.userId, model, raw: String(text).slice(0, 6000) });
+      console.info("LivePilot screenshot recognition raw response summary", { user_id: log.userId, model, length: String(text).length });
     }
     const parsed = parseModelJson(text);
     if (log?.operation === "screenshot_recognition") {
-      console.log("LivePilot screenshot pipeline parsed JSON", { user_id: log.userId, parsed });
+      console.info("LivePilot screenshot recognition parsed JSON summary", {
+        user_id: log.userId,
+        document_type: String(parsed?.document_type || parsed?.screenshot_type || "").slice(0, 80),
+        metric_count: Array.isArray(parsed?.metrics) ? parsed.metrics.length : Object.keys(parsed?.metrics || {}).length,
+        top_level_keys: Object.keys(parsed || {}).slice(0, 20)
+      });
     }
     return parsed;
   } catch (error) {
@@ -2438,12 +2444,11 @@ function normalizeRecognition(raw: any): any {
       comparison: typeof item.comparison === "object" && item.comparison ? item.comparison : {}
     };
   }).filter((item: any) => item.key && item.normalized_value !== null) : [];
-  console.log("LivePilot screenshot pipeline normalized metrics", {
+  console.info("LivePilot screenshot normalized metrics summary", {
     platform: raw?.platform || null,
     screenshot_type: raw?.screenshot_type || null,
     metric_count: metrics.length,
-    metric_keys: metrics.map((item: any) => item.key),
-    metrics
+    metric_keys: metrics.map((item: any) => item.key)
   });
   return {
     document_type: String(raw?.document_type || raw?.screenshot_type || "douyin_live_summary").slice(0, 80),
@@ -2996,6 +3001,10 @@ function cors(response: Response, request?: Request): Response {
     "http://localhost:3001",
     "http://127.0.0.1:3001"
   ]);
+  for (const item of String((globalThis as any).__LIVEPILOT_CORS_ORIGINS__ || "").split(",")) {
+    const value = item.trim();
+    if (value) allowed.add(value);
+  }
   headers.set("access-control-allow-origin", origin && allowed.has(origin) ? origin : "*");
   headers.set("vary", "Origin");
   headers.set("access-control-allow-methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
