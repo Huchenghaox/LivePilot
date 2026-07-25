@@ -289,22 +289,22 @@ export default function ConfirmPage() {
 
   return (
     <>
-      <PageTitle title="确认识别数据" desc="先确认关键数据，再生成复盘。低置信度和冲突数据会突出显示。" />
+      <PageTitle title="确认直播数据" desc="AI 已经先读过截图。你只需要看一眼关键数字，补上空白或明显不对的地方。" />
       <div className="mb-5 rounded-2xl border border-white/10 bg-panel/70 p-4 shadow-card backdrop-blur">
         <div className="hidden items-center gap-3 md:flex">
-          {["基础信息", "数据录入", "确认数据", "规则与方式", "AI报告"].map((step, index) => (
+          {["上传截图", "AI读取", "补缺口", "生成报告"].map((step, index) => (
             <div key={step} className="flex min-w-0 flex-1 items-center gap-3">
               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${index < 2 ? "border border-success/30 bg-success/10 text-success" : index === 2 ? "brand-gradient text-ink shadow-glow" : "border border-white/10 bg-white/5 text-slate-400"}`}>
                 {index + 1}
               </div>
               <div className={index === 2 ? "truncate text-sm font-semibold text-slate-100" : "truncate text-sm text-slate-500"}>{step}</div>
-              {index < 4 ? <div className="h-px flex-1 bg-white/10" /> : null}
+              {index < 3 ? <div className="h-px flex-1 bg-white/10" /> : null}
             </div>
           ))}
         </div>
         <div className="md:hidden">
-          <div className="text-xs text-brand">第 3 步，共 5 步</div>
-          <div className="mt-1 text-sm font-semibold text-slate-100">确认数据并选择报告方式</div>
+          <div className="text-xs text-brand">第 3 步，共 4 步</div>
+          <div className="mt-1 text-sm font-semibold text-slate-100">补上 AI 没读准的地方</div>
         </div>
       </div>
       {loading ? <StatusMessage type="loading" text="正在读取 AI 识别结果..." /> : null}
@@ -331,7 +331,7 @@ export default function ConfirmPage() {
 
           <Card>
             <div className="mb-5">
-              <div className="text-xs font-semibold text-brand">正式分析前的关键一步</div>
+              <div className="text-xs font-semibold text-brand">正式分析前的最后确认</div>
               <h2 className="mt-1 text-xl font-bold text-slate-50">AI 已先读一遍，你只需要补缺口</h2>
               <p className="mt-2 text-sm text-slate-500">
                 已识别 {filledCoreCount} 项核心信息。空字段可以留空，系统会按“数据不足”处理，不会自动当成 0。
@@ -356,6 +356,7 @@ export default function ConfirmPage() {
 
           <Card>
             <h2 className="mb-3 text-xl font-bold text-slate-50">主播补充说明</h2>
+            <p className="mb-4 text-sm leading-6 text-slate-500">这里都可以不填。你补得越具体，报告里的原因判断和下一场话术会越贴近现场。</p>
             <div className="grid gap-3 md:grid-cols-2">
               <TextInput label="本场直播主题" value={metrics.session_topic ?? ""} placeholder="例如 新手开播留人方法" onChange={(value) => setMetrics({ ...metrics, session_topic: value })} />
               <TextInput label="本场最想解决的问题" value={metrics.main_goal ?? ""} placeholder="例如 进来的人留不住" onChange={(value) => setMetrics({ ...metrics, main_goal: value })} />
@@ -434,34 +435,46 @@ export default function ConfirmPage() {
           </Card>
 
           <Card>
-            <div className="mb-2 text-sm font-medium text-slate-100">报告方式</div>
-            <div className="grid gap-2 md:grid-cols-3">
-              {[
-                ["simple", "直接告诉我怎么改"],
-                ["professional", "给我专业分析"],
-                ["both", "两种都要"]
-              ].map(([value, label]) => (
-                <button key={value} className={`rounded-2xl border p-3 text-sm font-semibold transition ${reportType === value ? "border-brand bg-brand/10 text-brand shadow-glow" : "border-white/10 bg-white/5 text-slate-300 hover:border-brand/30"}`} onClick={() => setReportType(value as typeof reportType)}>
-                  {label}
-                </button>
-              ))}
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-xs font-semibold text-brand">下一步</div>
+                <h2 className="mt-1 text-xl font-bold text-slate-50">让 AI 生成复盘报告</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">报告会先指出最大问题，再给下一场能直接照做的动作和话术。</p>
+              </div>
+              <PrimaryButton disabled={working} onClick={generate}>
+                {working ? generationStep || "正在生成报告..." : "生成复盘报告"}
+              </PrimaryButton>
             </div>
-            <div className="mt-5">
-              <label className="mb-1 block text-sm font-medium">这次分析还有什么需要AI特别注意？</label>
-              <textarea
-                className="min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                placeholder="例如：最近平台对诱导打赏查得严，下一场话术要更温和。"
-                value={temporaryInstruction}
-                onChange={(event) => setTemporaryInstruction(event.target.value)}
-              />
-              <label className="mt-2 flex items-center gap-2 text-sm text-slate-400">
-                <input type="checkbox" checked={saveTemporaryAsRule} onChange={(event) => setSaveTemporaryAsRule(event.target.checked)} />
-                保存为该主播的长期提醒，稍后在规则与提示中确认生效
-              </label>
-            </div>
-            <PrimaryButton className="mt-5" disabled={working} onClick={generate}>
-              {working ? generationStep || "正在生成报告..." : "确认并生成报告"}
-            </PrimaryButton>
+            <details className="mt-4 rounded-2xl border border-black/10 bg-white/70 p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-700">高级选项：报告方式和特别提醒</summary>
+              <div className="mt-4">
+                <div className="mb-2 text-sm font-medium text-slate-100">报告方式</div>
+                <div className="grid gap-2 md:grid-cols-3">
+                  {[
+                    ["simple", "直接告诉我怎么改"],
+                    ["professional", "给我专业分析"],
+                    ["both", "两种都要"]
+                  ].map(([value, label]) => (
+                    <button key={value} className={`rounded-2xl border p-3 text-sm font-semibold transition ${reportType === value ? "border-brand bg-brand/10 text-brand shadow-glow" : "border-white/10 bg-white/5 text-slate-300 hover:border-brand/30"}`} onClick={() => setReportType(value as typeof reportType)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-5">
+                  <label className="mb-1 block text-sm font-medium">这次分析还有什么需要 AI 特别注意？</label>
+                  <textarea
+                    className="min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    placeholder="例如：最近平台对诱导打赏查得严，下一场话术要更温和。"
+                    value={temporaryInstruction}
+                    onChange={(event) => setTemporaryInstruction(event.target.value)}
+                  />
+                  <label className="mt-2 flex items-center gap-2 text-sm text-slate-400">
+                    <input type="checkbox" checked={saveTemporaryAsRule} onChange={(event) => setSaveTemporaryAsRule(event.target.checked)} />
+                    保存为该主播的长期提醒，稍后在规则与提示中确认生效
+                  </label>
+                </div>
+              </div>
+            </details>
             {working ? (
               <div className="mt-4 rounded-2xl border border-brand/25 bg-brand/10 p-4">
                 <div className="mb-3 text-sm font-semibold text-brand">{generationStep}</div>
@@ -473,9 +486,9 @@ export default function ConfirmPage() {
               </div>
             ) : null}
           </Card>
-          <div className="sticky bottom-4 z-10 rounded-2xl border border-white/10 bg-panel/90 p-3 shadow-card backdrop-blur">
+          <div className="sticky bottom-4 z-10 rounded-2xl border border-white/10 bg-panel/90 p-3 shadow-card backdrop-blur md:hidden">
             <PrimaryButton className="w-full" disabled={working} onClick={generate}>
-              {working ? generationStep || "正在生成报告..." : "确认并生成报告"}
+              {working ? generationStep || "正在生成报告..." : "生成复盘报告"}
             </PrimaryButton>
           </div>
         </div>

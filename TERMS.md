@@ -1,6 +1,6 @@
 # LivePilot Terms
 
-LivePilot is provided as an AI-assisted live-stream operations tool. These terms are a practical foundation for Beta use and open-source review, not final legal advice.
+LivePilot is provided as an AI-assisted live-stream operations tool. These terms are a practical foundation for early production use and open-source review, not final legal advice.
 
 ## Use of the Product
 
@@ -20,7 +20,7 @@ AI output may be incomplete or inaccurate. Reports and suggestions should be tre
 
 ## Service Status
 
-LivePilot is currently in Beta. Features may change, fail, or be temporarily unavailable. Some capabilities require user-provided model configuration or platform-side permissions.
+LivePilot is under active development. Features may change, fail, or be temporarily unavailable. Some capabilities require administrator-managed model configuration or platform-side permissions.
 
 LivePilot is an independent product and is not affiliated with Douyin or ByteDance.
 

@@ -17,7 +17,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   try {
     response = await fetch(apiUrl(path), { ...options, headers });
   } catch {
-    throw new Error("暂时无法连接服务，请确认后台服务已经启动后重试。");
+    throw new Error("暂时连不上 LivePilot 服务，请稍后重试。");
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as ApiError;
@@ -34,8 +34,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     if (response.status === 403) {
       throw new Error(typeof body.detail === "string" ? body.detail : "你没有权限进行这个操作。");
     }
+    if (response.status === 404) {
+      const detail = typeof body.detail === "string" ? body.detail : "";
+      if (detail.includes("接口不存在")) {
+        throw new Error("这个功能入口暂时不可用，请返回上一页再试。");
+      }
+      throw new Error(detail || "没有找到这条记录，可能已经被删除或不属于当前账号。");
+    }
     if (response.status >= 500) {
-      throw new Error("服务暂时异常，请稍后重试。");
+      throw new Error("LivePilot 服务暂时异常，请稍后重试。你刚才填写的内容不会被自动清空。");
     }
     if (typeof body.detail === "string") throw new Error(body.detail);
     if (Array.isArray(body.detail) && body.detail[0]?.msg) throw new Error(body.detail[0].msg);
@@ -70,7 +77,7 @@ export function uploadWithProgress<T>(
         onProgress(Math.round((event.loaded / event.total) * 100));
       }
     };
-    xhr.onerror = () => reject(new Error("暂时无法连接服务，请确认后台服务已经启动后重试。"));
+    xhr.onerror = () => reject(new Error("暂时连不上 LivePilot 服务，请稍后重试。"));
     xhr.onload = () => {
       const body = xhr.responseText ? safeParseResponse(xhr.responseText) as ApiError | T : {};
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -87,7 +94,7 @@ export function uploadWithProgress<T>(
         return;
       }
       if (xhr.status >= 500) {
-        reject(new Error("服务暂时异常，请稍后重试。"));
+        reject(new Error("LivePilot 服务暂时异常，请稍后重试。截图和填写内容会保留在当前页面。"));
         return;
       }
       if (typeof (body as ApiError).detail === "string") {

@@ -17,7 +17,7 @@ LivePilot is an independent product and is not affiliated with Douyin or ByteDan
 
 ## Current Product Status
 
-LivePilot is an early production MVP. The Cloudflare-native path is the primary deployment target:
+LivePilot is an early production version. The Cloudflare-native path is the primary deployment target:
 
 - API Worker: Cloudflare Workers
 - Web app: Next.js on OpenNext for Cloudflare
@@ -142,7 +142,9 @@ cd web && npm run typecheck && npm run lint && npm run build
 
 ## Deployment Notes
 
-The public MVP deployment uses Cloudflare Workers, D1, and R2. Production resources and secrets are managed outside the repository.
+The public deployment path uses Cloudflare Workers, D1, and R2. Production resources and secrets are managed outside the repository.
+
+For a new Cloudflare deployment, start from `workers/api/wrangler.example.jsonc`, copy it to `workers/api/wrangler.jsonc`, and fill in your own Worker name, D1 database name/id, and private R2 bucket name. Do not put secrets in Wrangler config; use Cloudflare secrets for values such as `JWT_SECRET`, `MODEL_ENCRYPTION_KEY`, and model provider API keys.
 
 See:
 
@@ -183,7 +185,7 @@ Keep contributions aligned with LivePilot's product boundaries:
 - Strengthen report quality checks and next-session experiment tracking.
 - Continue Cloudflare-native hardening.
 - Add safer operating analytics for administrators.
-- Prepare future real-time live copilot architecture without rushing real-time features into the MVP.
+- Prepare future real-time live copilot architecture without rushing real-time features into the current product.
 
 ## License
 

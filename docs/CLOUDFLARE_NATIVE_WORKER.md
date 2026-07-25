@@ -20,14 +20,14 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "livepilot-production",
-      "database_id": "1d503efc-6f49-460c-acf7-ac5801f1e813"
+      "database_name": "your-d1-database-name",
+      "database_id": "your-d1-database-id"
     }
   ],
   "r2_buckets": [
     {
       "binding": "UPLOADS",
-      "bucket_name": "livepilot-uploads"
+      "bucket_name": "your-private-r2-bucket"
     }
   ]
 }

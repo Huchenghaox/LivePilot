@@ -1,0 +1,27 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "your-livepilot-api-worker",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-06-25",
+	"workers_dev": true,
+	"vars": {
+		"APP_ENV": "production",
+		"REGISTRATION_MODE": "closed",
+		"SMS_ENABLED": "false",
+		"SMS_PROVIDER": "disabled",
+		"CORS_ORIGINS": "https://your-livepilot-web.example.com"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "your-d1-database-name",
+			"database_id": "your-d1-database-id"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "UPLOADS",
+			"bucket_name": "your-private-r2-bucket"
+		}
+	]
+}

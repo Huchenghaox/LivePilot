@@ -162,7 +162,7 @@ export default function ReportPage() {
       {message ? <div className="mb-4 rounded-2xl border border-brand/25 bg-brand/10 p-3 text-sm text-brand">{message}</div> : null}
       {report ? (
         <div className="space-y-5">
-          {report.source === "mock" ? <StatusMessage type="warning" text="当前报告不是由正式模型生成，仅用于内部验证。请配置可用模型后再用于真实复盘。" /> : null}
+          {report.source === "mock" ? <StatusMessage type="warning" text="这份报告不是由正式 AI 服务生成。请联系管理员检查 AI 助手状态后重新生成。" /> : null}
           <Card className="relative overflow-hidden">
             <div className="pointer-events-none absolute -right-20 -top-24 h-60 w-60 rounded-full bg-brand/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 left-1/4 h-56 w-56 rounded-full bg-coral/10 blur-3xl" />

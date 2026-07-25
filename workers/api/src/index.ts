@@ -33,6 +33,7 @@ const passwordHashIterations = 60000;
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     (globalThis as any).__LIVEPILOT_CORS_ORIGINS__ = env.CORS_ORIGINS || "";
+    (globalThis as any).__LIVEPILOT_CORS_ORIGIN__ = request.headers.get("origin") || "";
     const url = new URL(request.url);
     try {
       if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
@@ -2993,7 +2994,7 @@ function ok(payload: unknown): Response { return cors(new Response(JSON.stringif
 function fail(status: number, message: string): Response { return cors(new Response(JSON.stringify({ detail: message }), { status, headers: jsonHeaders })); }
 function cors(response: Response, request?: Request): Response {
   const headers = new Headers(response.headers);
-  const origin = request?.headers.get("origin") || "";
+  const origin = request?.headers.get("origin") || String((globalThis as any).__LIVEPILOT_CORS_ORIGIN__ || "");
   const allowed = new Set([
     "https://livepilot-web.huchenghaox.workers.dev",
     "http://localhost:3000",
